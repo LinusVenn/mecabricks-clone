@@ -5,7 +5,7 @@ export class ProjectSerializer {
 
     constructor() {
         this.format = 'mecabricks-clone';
-        this.version = 1;
+        this.version = 2; // Version 2 speichert zusätzlich logische Gruppen.
 
         // Validierung wird an den eigenständigen ProjectValidator delegiert
         this.validator = new ProjectValidator();
@@ -31,7 +31,9 @@ export class ProjectSerializer {
             version: this.version,
 
             project: {
-                id: projectInfo.id || crypto.randomUUID(),
+                id: projectInfo.id || (typeof crypto !== 'undefined' && crypto.randomUUID
+                    ? crypto.randomUUID()
+                    : `project-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`),
 
                 name: projectInfo.name || 'Unbenanntes Projekt',
 

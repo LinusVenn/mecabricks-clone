@@ -59,8 +59,15 @@ export class Editor {
         this.multiSelectionManager = new MultiSelectionManager();
 
         this.selectionBox = new SelectionBox(
-            camera, renderer, this.multiSelectionManager, library, scene
+            camera, renderer, this.multiSelectionManager, library, sceneManager.controls
         );
+
+        // SelectionManager muss einen Space+Drag als Bereichsauswahl erkennen
+        // und darf dabei keine normale Einzel-/Mehrfachauswahl auslösen.
+        this.selectionManager.selectionBox = this.selectionBox;
+
+        // Im Platzierungsmodus hat das Setzen eines Bauteils Vorrang.
+        this.selectionBox.canStart = () => !this.placementManager.selectedPart;
 
         this.groupManager = new GroupManager();
 
@@ -159,19 +166,14 @@ export class Editor {
         canvas.addEventListener('pointerdown', event => {
             if (event.button !== 0) return;
             if (!this.placementManager.selectedPart) return;
+            if (this.selectionBox.isSpacePressed()) return;
 
-            // Im Placement-Modus: Rechteckauswahl deaktivieren
-            this.selectionBox.enabled = false;
+            // Im Placement-Modus wird die Bereichsauswahl durch
+            // selectionBox.canStart() blockiert.
             event.stopPropagation();
             this.placementManager.placeBrick();
         });
 
-        // Nach dem Loslassen wieder aktivieren
-        canvas.addEventListener('pointerup', () => {
-            if (!this.placementManager.selectedPart) {
-                this.selectionBox.enabled = true;
-            }
-        });
     }
 
 

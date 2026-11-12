@@ -37,6 +37,11 @@ export class SelectionManager {
     handleClick(event) {
         if (event.button !== 0) return;
 
+        // Space+Drag gehört ausschließlich der SelectionBox.
+        // So wird beim Start der Bereichsauswahl kein einzelner Stein
+        // versehentlich ausgewählt oder die bestehende Auswahl gelöscht.
+        if (this.selectionBox?.isSpacePressed()) return;
+
         // Mausposition relativ zum Canvas berechnen
         const rect = this.renderer.domElement.getBoundingClientRect();
 

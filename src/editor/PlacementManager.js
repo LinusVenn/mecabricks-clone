@@ -39,9 +39,6 @@ export class PlacementManager {
     this.previewRotation = 0;
     this.previewValid = false;
 
-    // Wird von main.js nach der Initialisierung gesetzt
-    this.historyManager = null;
-
   }
 
   setSelectedPart(type) {
@@ -149,10 +146,11 @@ export class PlacementManager {
       this.selectedPart
     );
 
-    this.createConnections(brick);
+    if (this.editor?.historyManager) {
+        this.editor.historyManager.saveState();
+    }
 
-    // Zustand nach erfolgreichem Platzieren speichern
-    this.historyManager?.saveState();
+    this.createConnections(brick);
 
     return brick;
 

@@ -10,6 +10,7 @@ import { ProjectStorage } from './project/ProjectStorage.js';
 import { AutoSaveManager } from './project/AutoSaveManager.js';
 import { HistoryManager } from './history/HistoryManager.js';
 import { ProjectToolbar } from './ui/ProjectToolbar.js';
+import { GroupToolbar } from './ui/GroupToolbar.js';
 import { PartLibraryUI } from './library/PartLibraryUI.js';
 
 

@@ -208,6 +208,49 @@ export class ProjectValidator {
             }
         }
 
+        // ── 5. Gruppen (ab Projektversion 2) ───────────────────────────
+        // Version-1-Projekte bleiben rückwärtskompatibel und haben keine Gruppen.
+        if (data.version >= 2) {
+            if (data.groups !== undefined && !Array.isArray(data.groups)) {
+                throw new Error('Die Gruppenliste ist ungültig.');
+            }
+
+            const groupIds = new Set();
+            const assignedBrickIds = new Set();
+
+            for (const group of (data.groups ?? [])) {
+                if (!group || typeof group !== 'object' || typeof group.id !== 'string' || !group.id.trim()) {
+                    throw new Error('Eine Gruppe hat keine gültige ID.');
+                }
+                if (groupIds.has(group.id)) {
+                    throw new Error(`Doppelte Gruppen-ID: "${group.id}".`);
+                }
+                groupIds.add(group.id);
+
+                if (typeof group.name !== 'string' || !group.name.trim()) {
+                    throw new Error(`Gruppe "${group.id}" hat keinen gültigen Namen.`);
+                }
+                if (!Array.isArray(group.brickIds) || group.brickIds.length < 1) {
+                    throw new Error(`Gruppe "${group.id}" enthält keine Bauteile.`);
+                }
+
+                const localIds = new Set();
+                for (const brickId of group.brickIds) {
+                    if (typeof brickId !== 'string' || !brickIds.has(brickId)) {
+                        throw new Error(`Gruppe "${group.id}" verweist auf ein unbekanntes Bauteil.`);
+                    }
+                    if (localIds.has(brickId)) {
+                        throw new Error(`Gruppe "${group.id}" enthält Bauteil "${brickId}" mehrfach.`);
+                    }
+                    if (assignedBrickIds.has(brickId)) {
+                        throw new Error(`Bauteil "${brickId}" ist mehreren Gruppen zugeordnet.`);
+                    }
+                    localIds.add(brickId);
+                    assignedBrickIds.add(brickId);
+                }
+            }
+        }
+
         return true;
     }
 

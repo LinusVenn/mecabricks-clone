@@ -152,7 +152,8 @@ export class HistoryManager {
         ModelSnapshot.restore(
             snapshot,
             this.library,
-            this.connectionManager
+            this.connectionManager,
+            this.groupManager
         );
 
         this.currentIndex = index;

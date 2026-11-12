@@ -132,7 +132,8 @@ export class ProjectManager {
         const projectData = this.serializer.createProject(
             this.library,
             this.connectionManager,
-            this.projectInfo
+            this.projectInfo,
+            this.groupManager
         );
 
         // Aktualisierte Projektinformationen übernehmen
