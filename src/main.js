@@ -1,6 +1,5 @@
 
 import { SceneManager } from './scene/SceneManager.js';
-import { addLighting } from './scene/Lighting.js';
 
 import { PartLibrary } from './objects/PartLibrary.js';
 import { Editor } from './editor/Editor.js';
@@ -9,9 +8,35 @@ import { ProjectManager } from './project/ProjectManager.js';
 import { ProjectStorage } from './project/ProjectStorage.js';
 import { AutoSaveManager } from './project/AutoSaveManager.js';
 import { HistoryManager } from './history/HistoryManager.js';
+
 import { ProjectToolbar } from './ui/ProjectToolbar.js';
 import { GroupToolbar } from './ui/GroupToolbar.js';
 import { PartLibraryUI } from './library/PartLibraryUI.js';
+
+// ========================================
+// Phase 7: Rendering
+// ========================================
+
+import { RenderSettings } from './rendering/RenderSettings.js';
+import { RenderManager } from './rendering/RenderManager.js';
+import { LightingManager } from './rendering/LightingManager.js';
+import { ShadowManager } from './rendering/ShadowManager.js';
+import { EnvironmentManager } from './rendering/EnvironmentManager.js';
+
+// ========================================
+// Phase 7: Materialien
+// ========================================
+
+import { MaterialLibrary } from './materials/MaterialLibrary.js';
+import { MaterialManager } from './materials/MaterialManager.js';
+
+// ========================================
+// Phase 7: UI
+// ========================================
+
+import { MaterialPanel } from './ui/MaterialPanel.js';
+import { LightingPanel } from './ui/LightingPanel.js';
+import { RenderPanel } from './ui/RenderPanel.js';
 
 
 // ========================================
@@ -22,14 +47,84 @@ const container = document.getElementById(
     'canvas-container'
 );
 
-const sceneManager = new SceneManager(container);
+if (!container) {
+    throw new Error(
+        'Das Element #canvas-container wurde nicht gefunden.'
+    );
+}
 
-// Beleuchtung hinzufügen
-addLighting(sceneManager.scene);
+const sceneManager = new SceneManager(container);
 
 
 // ========================================
-// 2. Bauteilbibliothek erstellen
+// Phase 7: Render-Einstellungen
+// ========================================
+
+const renderSettings = sceneManager.renderSettings;
+
+
+// Der vorhandene SceneManager-Renderer wird weiterverwendet.
+// Es wird ausdrücklich kein zweiter Renderer erzeugt.
+
+const renderer = sceneManager.renderer;
+const camera = sceneManager.camera;
+
+if (!renderer) {
+    throw new Error(
+        'SceneManager stellt keinen Renderer über sceneManager.renderer bereit.'
+    );
+}
+
+if (!camera) {
+    throw new Error(
+        'SceneManager stellt keine Kamera über sceneManager.camera bereit.'
+    );
+}
+
+
+// RenderManager übernimmt die Konfiguration und Größenanpassung.
+// Die bestehende Render-Schleife des SceneManagers bleibt erhalten.
+
+const renderManager = sceneManager.renderManager;
+
+
+// ========================================
+// 2. Beleuchtung initialisieren
+// Phase 7 ersetzt addLighting()
+// ========================================
+
+const lightingManager = sceneManager.lightingManager;
+
+
+// ========================================
+// 3. Schatten initialisieren
+// ========================================
+
+const shadowManager = sceneManager.shadowManager;
+
+
+// ========================================
+// 4. Studio-Umgebung initialisieren
+// ========================================
+
+const environmentManager = sceneManager.environmaneManager;
+
+
+
+
+// ========================================
+// 5. Materialsystem initialisieren
+// ========================================
+
+const materialLibrary = new MaterialLibrary();
+
+const materialManager = new MaterialManager({
+    library: materialLibrary
+});
+
+
+// ========================================
+// 6. Bauteilbibliothek erstellen
 // ========================================
 
 const library = new PartLibrary(
@@ -38,7 +133,7 @@ const library = new PartLibrary(
 
 
 // ========================================
-// 3. Editor initialisieren
+// 7. Editor initialisieren
 // ========================================
 
 const editor = new Editor(
@@ -48,21 +143,18 @@ const editor = new Editor(
 
 
 // ========================================
-// 4. ProjectManager initialisieren
+// 8. ProjectManager initialisieren
 // ========================================
 
 const projectManager = new ProjectManager(
     library,
     editor.connectionManager,
-    editor.groupManager       // Phase 6: Gruppen mitkopieren
+    editor.groupManager
 );
 
 
 // ========================================
-// 5. HistoryManager initialisieren
-//    (onChange wird NACH dem Startup gesetzt,
-//     damit der initiale Zustand keinen
-//     Speichervorgang auslöst)
+// 9. HistoryManager initialisieren
 // ========================================
 
 const historyManager = new HistoryManager(
@@ -72,13 +164,17 @@ const historyManager = new HistoryManager(
 
     // Wird nach Undo und Redo aufgerufen
     () => {
+
         editor.selectionManager.clearSelection();
+
         editor.transformManager.detach();
-        editor.multiSelectionManager.clearSelection();  // Phase 6
-        editor.groupTransformManager.detach();          // Phase 6
+
+        editor.multiSelectionManager.clearSelection();
+
+        editor.groupTransformManager.detach();
+
     },
 
-    // onChange wird unten gesetzt
     null,
 
     // Phase 6: Gruppen in Snapshots einschließen
@@ -87,34 +183,40 @@ const historyManager = new HistoryManager(
 
 
 // ========================================
-// 6. ProjectToolbar erstellen
+// 10. ProjectToolbar erstellen
 // ========================================
 
-// ProjectToolbar verwaltet alle Schaltflächen und Statusanzeigen
-// im Header. Callbacks werden weiter unten verdrahtet.
 const toolbar = new ProjectToolbar();
 
 
 // ========================================
-// 7. AutoSaveManager erstellen
+// 11. AutoSaveManager erstellen
 // ========================================
 
-// ProjectStorage kapselt den Zugriff auf localStorage.
-// Beim späteren Wechsel auf IndexedDB wird nur diese eine
-// Klasse ausgetauscht – AutoSaveManager und main.js bleiben unverändert.
 const storage = new ProjectStorage();
 
-const autoSaveManager = new AutoSaveManager(projectManager, storage);
+const autoSaveManager = new AutoSaveManager(
+    projectManager,
+    storage
+);
 
-// Status-Callback → ProjectToolbar delegiert an die DOM-Elemente
-autoSaveManager.onStatusChange = (status, time, errorMessage) => {
-    toolbar.updateSaveStatus(status, time, errorMessage);
+autoSaveManager.onStatusChange = (
+    status,
+    time,
+    errorMessage
+) => {
+
+    toolbar.updateSaveStatus(
+        status,
+        time,
+        errorMessage
+    );
+
 };
 
 
 // ========================================
-// 7. Gespeichertes Projekt laden oder
-//    Testbauteile hinzufügen
+// 12. Gespeichertes Projekt laden
 // ========================================
 
 let projectLoaded = false;
@@ -127,20 +229,21 @@ if (autoSaveManager.hasSavedProject()) {
 
         try {
 
-            // Schutzvariable setzen: Ladevorgänge sollen keinen
-            // neuen Speichervorgang auslösen
             autoSaveManager.setRestoring(true);
 
-            // Gespeicherte Daten als JSON-String übergeben
             projectManager.loadProjectJSON(
                 JSON.stringify(savedData)
             );
 
             projectLoaded = true;
 
-            // Letzten Speicherzeitpunkt anzeigen
-            const lastSaved = autoSaveManager.getLastSavedTime();
-            autoSaveManager.onStatusChange('saved', lastSaved);
+            const lastSaved =
+                autoSaveManager.getLastSavedTime();
+
+            autoSaveManager.onStatusChange(
+                'saved',
+                lastSaved
+            );
 
             console.log(
                 'Gespeichertes Projekt geladen:',
@@ -160,9 +263,6 @@ if (autoSaveManager.hasSavedProject()) {
                 '\n\nEin neues Projekt wird gestartet.'
             );
 
-            // Ungültigen Speicherstand NICHT automatisch überschreiben –
-            // Benutzer kann ihn über deleteSavedProject() in der Konsole löschen.
-
         } finally {
 
             autoSaveManager.setRestoring(false);
@@ -171,10 +271,13 @@ if (autoSaveManager.hasSavedProject()) {
     }
 }
 
+
+// ========================================
+// 13. Testbauteile hinzufügen
+// ========================================
+
 if (!projectLoaded) {
 
-    // Testbauteile hinzufügen, wenn kein gespeichertes Projekt vorliegt.
-    // Diese drei Beispiele kannst du durch deine bisherigen Bauteile ersetzen.
     library.addBrick(
         0, 0, 0,
         0xff0000,
@@ -192,88 +295,244 @@ if (!projectLoaded) {
         0x00ff00,
         'brick_1x2'
     );
+
 }
 
 
 // ========================================
-// 9. History nach dem Laden initialisieren
-//    (so ist der geladene Zustand der
-//     Ausgangspunkt – nicht ein leeres Modell)
+// Phase 7: Schatten auf Szene anwenden
+// ========================================
+
+// Bereits vorhandene Bauteile erhalten Schatten.
+
+shadowManager.applyToScene(
+    sceneManager.scene,
+    {
+        cast: true,
+        receive: true
+    }
+);
+
+
+// ========================================
+// 14. History initialisieren
 // ========================================
 
 historyManager.initialize();
 
-// onChange erst NACH initialize() setzen, damit
-// der initiale saveState() keinen Autosave auslöst.
-historyManager.onChange = () => autoSaveManager.scheduleSave();
+historyManager.onChange = () => {
+    autoSaveManager.scheduleSave();
+};
 
 
 // ========================================
-// 10. Bauteilbibliothek initialisieren
+// 15. Bauteilbibliothek initialisieren
 // ========================================
 
 const partLibraryUI = new PartLibraryUI(
     document.getElementById('sidebar'),
     (partId) => {
-        // Bauteil an den PlacementManager übergeben
-        editor.placementManager.setSelectedPart(partId);
+
+        editor.placementManager.setSelectedPart(
+            partId
+        );
+
     }
 );
 
 window.partLibraryUI = partLibraryUI;
 
-// onHistoryChange → Undo/Redo-Buttons in der Toolbar aktualisieren.
-// Ebenfalls erst nach initialize() setzen.
-historyManager.onHistoryChange = (canUndo, canRedo) => {
-    toolbar.updateUndoRedo(canUndo, canRedo);
-};
-
-// HistoryManager mit Editor und Untermanagern verknüpfen
-editor.historyManager                       = historyManager;
-editor.placementManager.historyManager      = historyManager;
-editor.transformManager.historyManager      = historyManager;
-editor.groupTransformManager.historyManager = historyManager;   // Phase 6
 
 // ========================================
-// Phase 6: GroupToolbar initialisieren
+// 16. History-Buttons aktualisieren
+// ========================================
+
+historyManager.onHistoryChange = (
+    canUndo,
+    canRedo
+) => {
+
+    toolbar.updateUndoRedo(
+        canUndo,
+        canRedo
+    );
+
+};
+
+
+// ========================================
+// 17. HistoryManager mit Editor verbinden
+// ========================================
+
+editor.historyManager = historyManager;
+
+editor.placementManager.historyManager =
+    historyManager;
+
+editor.transformManager.historyManager =
+    historyManager;
+
+editor.groupTransformManager.historyManager =
+    historyManager;
+
+
+// ========================================
+// 18. GroupToolbar initialisieren
 // ========================================
 
 const groupToolbar = new GroupToolbar();
 
-// Toolbar-Callbacks von Editor empfangen
-editor.onGroupUIUpdate = (count, groupName) => {
-    groupToolbar.updateSelectionInfo(count, groupName);
+editor.onGroupUIUpdate = (
+    count,
+    groupName
+) => {
+
+    groupToolbar.updateSelectionInfo(
+        count,
+        groupName
+    );
+
 };
 
-groupToolbar.onGroup   = () => editor.groupSelected();
-groupToolbar.onUngroup = () => editor.ungroupSelected();
-groupToolbar.onCopy    = () => editor.copySelected();
-groupToolbar.onDuplicate = () => editor.duplicateSelected();
-groupToolbar.onDelete  = () => editor.deleteSelected();
-groupToolbar.onPaste   = () => editor.pasteSelected();
+groupToolbar.onGroup = () =>
+    editor.groupSelected();
 
-// Einfügen-Button im rechten Toolbar
+groupToolbar.onUngroup = () =>
+    editor.ungroupSelected();
+
+groupToolbar.onCopy = () =>
+    editor.copySelected();
+
+groupToolbar.onDuplicate = () =>
+    editor.duplicateSelected();
+
+groupToolbar.onDelete = () =>
+    editor.deleteSelected();
+
+groupToolbar.onPaste = () =>
+    editor.pasteSelected();
+
+
 document.getElementById('tool-paste')
-    ?.addEventListener('click', () => editor.pasteSelected());
+    ?.addEventListener('click', () => {
+
+        editor.pasteSelected();
+
+    });
 
 window.groupToolbar = groupToolbar;
 
-// Projektnamen in der Toolbar anzeigen
-toolbar.updateProjectName(projectManager.getProjectInfo().name);
+
+// ========================================
+// 19. Phase 7: UI-Container erstellen
+// ========================================
+
+// Die neuen Panels werden in der Sidebar untergebracht.
+// Die bestehende PartLibraryUI wird nicht verändert.
+
+const sidebar = document.getElementById('sidebar');
+
+if (!sidebar) {
+    throw new Error(
+        'Das Element #sidebar wurde nicht gefunden.'
+    );
+}
+
+
+function createPhase7PanelContainer(id) {
+
+    let element = document.getElementById(id);
+
+    if (!element) {
+
+        element = document.createElement('div');
+
+        element.id = id;
+
+        element.className = 'phase7-panel-container';
+
+        sidebar.appendChild(element);
+
+    }
+
+    return element;
+}
+
+
+const materialPanelContainer =
+    createPhase7PanelContainer('material-panel');
+
+const lightingPanelContainer =
+    createPhase7PanelContainer('lighting-panel');
+
+const renderPanelContainer =
+    createPhase7PanelContainer('render-panel');
 
 
 // ========================================
-// 9. Seite schließen – ausstehenden
-//    Speichervorgang abschließen
+// 20. Phase 7: MaterialPanel
+// ========================================
+
+const materialPanel = new MaterialPanel(
+    materialPanelContainer,
+    materialManager,
+    {
+        onApplied: ({ preset, meshCount }) => {
+
+            console.log(
+                `Material ${preset} auf ${meshCount} Mesh(es) angewendet.`
+            );
+
+            // Materialänderungen als Projektänderung behandeln.
+            autoSaveManager.scheduleSave();
+
+        }
+    }
+);
+
+
+// ========================================
+// 21. Phase 7: LightingPanel
+// ========================================
+
+const lightingPanel = new LightingPanel(
+    lightingPanelContainer,
+    lightingManager
+);
+
+
+// ========================================
+// 22. Phase 7: RenderPanel
+// ========================================
+
+const renderPanel = new RenderPanel(
+    renderPanelContainer,
+    renderSettings
+);
+
+
+// ========================================
+// 23. Projektnamen anzeigen
+// ========================================
+
+toolbar.updateProjectName(
+    projectManager.getProjectInfo().name
+);
+
+
+// ========================================
+// 24. Seite schließen
 // ========================================
 
 window.addEventListener('beforeunload', () => {
+
     autoSaveManager.flush();
+
 });
 
 
 // ========================================
-// 10. Projekt exportieren
+// 25. Projekt exportieren
 // ========================================
 
 function exportProject() {
@@ -292,12 +551,13 @@ function exportProject() {
         );
 
         alert(error.message);
+
     }
 }
 
 
 // ========================================
-// 11. Neues Projekt erstellen
+// 26. Neues Projekt erstellen
 // ========================================
 
 function createNewProject(name) {
@@ -309,26 +569,32 @@ function createNewProject(name) {
 
     if (!confirmed) return;
 
-    // Ausstehenden Speichervorgang des alten Projekts abschließen
     autoSaveManager.flush();
 
     projectManager.createNewProject(name);
 
     editor.selectionManager.clearSelection();
 
-    // History auf den neuen Projektzustand zurücksetzen.
-    // clear() ruft saveState() → onChange → scheduleSave() auf.
     historyManager.clear();
 
-    // Projektnamen in der Toolbar aktualisieren
-    toolbar.updateProjectName(projectManager.getProjectInfo().name);
+    toolbar.updateProjectName(
+        projectManager.getProjectInfo().name
+    );
+
+    // Nach dem Erstellen eines neuen Projekts
+    // Schatten auf die aktuelle Szene anwenden.
+
+    shadowManager.applyToScene(
+        sceneManager.scene
+    );
 
     console.log('Neues Projekt gestartet.');
+
 }
 
 
 // ========================================
-// 12. Projekt umbenennen
+// 27. Projekt umbenennen
 // ========================================
 
 function renameProject(name) {
@@ -337,10 +603,10 @@ function renameProject(name) {
 
         projectManager.renameProject(name);
 
-        // Projektnamen sofort in der Toolbar aktualisieren
-        toolbar.updateProjectName(projectManager.getProjectInfo().name);
+        toolbar.updateProjectName(
+            projectManager.getProjectInfo().name
+        );
 
-        // Umbenennung autosaven
         autoSaveManager.scheduleSave();
 
         console.log(
@@ -353,34 +619,38 @@ function renameProject(name) {
         console.error(error.message);
 
         alert(error.message);
+
     }
 }
 
 
 // ========================================
-// 13. Projekt importieren (intern)
+// 28. Projekt importieren
 // ========================================
 
 async function importProjectFile(file) {
 
     try {
 
-        // Während des Imports keine Autosaves durch Nebeneffekte
         autoSaveManager.setRestoring(true);
 
         await projectManager.importProjectFile(file);
 
         autoSaveManager.setRestoring(false);
 
-        // Eventuell ausgewählten Stein abwählen
         editor.selectionManager.clearSelection();
 
-        // Importiertes Projekt als neuen Ausgangszustand speichern.
-        // clear() → saveState() → onChange → scheduleSave()
         historyManager.clear();
 
-        // Projektnamen in der Toolbar aktualisieren
-        toolbar.updateProjectName(projectManager.getProjectInfo().name);
+        toolbar.updateProjectName(
+            projectManager.getProjectInfo().name
+        );
+
+        // Phase 7: Schatten auf importierte Objekte anwenden.
+
+        shadowManager.applyToScene(
+            sceneManager.scene
+        );
 
         console.log('Import abgeschlossen.');
 
@@ -397,12 +667,13 @@ async function importProjectFile(file) {
             'Fehler beim Importieren: ' +
             error.message
         );
+
     }
 }
 
 
 // ========================================
-// 14. Lokalen Speicherstand löschen
+// 29. Lokalen Speicherstand löschen
 // ========================================
 
 function deleteSavedProject() {
@@ -417,58 +688,119 @@ function deleteSavedProject() {
     autoSaveManager.deleteSavedProject();
 
     console.log('Lokaler Speicherstand gelöscht.');
+
 }
 
 
 // ========================================
-// 15. Toolbar-Callbacks verdrahten
+// 30. Toolbar-Callbacks
 // ========================================
 
-// Manuell speichern (sofort, ohne Debounce)
-toolbar.onSave = () => autoSaveManager.save();
+toolbar.onSave = () => {
+    autoSaveManager.save();
+};
 
-// Neues Projekt
-toolbar.onNewProject = () => createNewProject();
+toolbar.onNewProject = () => {
+    createNewProject();
+};
 
-// Export
-toolbar.onExport = () => exportProject();
+toolbar.onExport = () => {
+    exportProject();
+};
 
-// Import – Datei wird von ProjectToolbar geöffnet,
-// der File-Handler landet hier
-toolbar.onImport = (file) => importProjectFile(file);
+toolbar.onImport = (file) => {
+    importProjectFile(file);
+};
 
-// Undo / Redo
-toolbar.onUndo = () => historyManager.undo();
-toolbar.onRedo = () => historyManager.redo();
+toolbar.onUndo = () => {
+    historyManager.undo();
+};
 
-// Umbenennen (ProjectToolbar fragt den neuen Namen ab)
-toolbar.onRename = (name) => renameProject(name);
+toolbar.onRedo = () => {
+    historyManager.redo();
+};
+
+toolbar.onRename = (name) => {
+    renameProject(name);
+};
 
 
 // ========================================
-// 16. Funktionen für Browser-Konsole
+// 31. Phase 7: Material auf Auswahl anwenden
 // ========================================
 
-window.projectManager     = projectManager;
-window.historyManager     = historyManager;
-window.autoSaveManager    = autoSaveManager;
-window.storage            = storage;
-window.toolbar            = toolbar;
+// Diese Funktion kann vom SelectionManager aufgerufen werden,
+// sobald sich die aktuelle Auswahl ändert.
+//
+// Die konkrete Auswahl-API des SelectionManagers ist hier
+// bewusst nicht vorausgesetzt.
 
-window.exportProject      = exportProject;
-window.createNewProject   = createNewProject;
-window.renameProject      = renameProject;
+function setMaterialPanelTarget(selectedObject) {
+
+    materialPanel.setTarget(selectedObject);
+
+}
+
+
+// ========================================
+// 32. Funktionen für Browser-Konsole
+// ========================================
+
+window.projectManager = projectManager;
+
+window.historyManager = historyManager;
+
+window.autoSaveManager = autoSaveManager;
+
+window.storage = storage;
+
+window.toolbar = toolbar;
+
+window.exportProject = exportProject;
+
+window.createNewProject = createNewProject;
+
+window.renameProject = renameProject;
+
 window.deleteSavedProject = deleteSavedProject;
 
 
 // ========================================
-// 17. Tastaturkürzel
+// Phase 7: Manager global verfügbar machen
+// ========================================
+
+window.renderManager = renderManager;
+
+window.renderSettings = renderSettings;
+
+window.lightingManager = lightingManager;
+
+window.shadowManager = shadowManager;
+
+window.environmentManager = environmentManager;
+
+window.materialLibrary = materialLibrary;
+
+window.materialManager = materialManager;
+
+window.materialPanel = materialPanel;
+
+window.lightingPanel = lightingPanel;
+
+window.renderPanel = renderPanel;
+
+window.setMaterialPanelTarget = setMaterialPanelTarget;
+
+
+// ========================================
+// 33. Tastaturkürzel
 // ========================================
 
 window.addEventListener('keydown', (event) => {
 
-    // Keine Shortcuts aus Eingabefeldern ausführen
     const target = event.target;
+
+    // Keine Shortcuts aus Eingabefeldern ausführen.
 
     if (
         target instanceof HTMLElement &&
@@ -480,45 +812,63 @@ window.addEventListener('keydown', (event) => {
         return;
     }
 
-    // Strg + S bzw. Cmd + S → Manuell speichern
+
+    // Strg + S / Cmd + S → Speichern
+
     if (
         (event.ctrlKey || event.metaKey) &&
         !event.shiftKey &&
         event.key.toLowerCase() === 's'
     ) {
+
         event.preventDefault();
+
         autoSaveManager.save();
+
         return;
     }
 
-    // Strg + Z bzw. Cmd + Z → Undo
+
+    // Strg + Z / Cmd + Z → Undo
+
     if (
         (event.ctrlKey || event.metaKey) &&
         !event.shiftKey &&
         event.key.toLowerCase() === 'z'
     ) {
+
         event.preventDefault();
+
         historyManager.undo();
+
         return;
     }
 
-    // Strg + Y bzw. Cmd + Shift + Z → Redo
+
+    // Strg + Y / Cmd + Shift + Z → Redo
+
     if (
         (event.ctrlKey || event.metaKey) &&
         (
             event.key.toLowerCase() === 'y' ||
-            (event.shiftKey && event.key.toLowerCase() === 'z')
+            (
+                event.shiftKey &&
+                event.key.toLowerCase() === 'z'
+            )
         )
     ) {
+
         event.preventDefault();
+
         historyManager.redo();
+
     }
 
 });
 
 
 // ========================================
-// 18. Projektstart
+// 34. Projektstart
 // ========================================
 
 console.log(
@@ -528,4 +878,8 @@ console.log(
 console.log(
     'Aktuelles Projekt:',
     projectManager.getProjectInfo()
+);
+
+console.log(
+    'Phase 7: Rendering und Materialien initialisiert.'
 );
