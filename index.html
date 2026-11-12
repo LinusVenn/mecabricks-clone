@@ -34,6 +34,7 @@
                         role="button"
                         tabindex="0"
                     >Unbenanntes Projekt</span>
+
                     <span
                         id="autosave-indicator"
                         class="autosave-idle"
@@ -46,37 +47,52 @@
                     id="project-toolbar-actions"
                     aria-label="Projektaktionen"
                 >
-                    <button id="btn-save"
-                        title="Projekt jetzt speichern (Strg+S)">
+                    <button
+                        id="btn-save"
+                        title="Projekt jetzt speichern (Strg+S)"
+                    >
                         Speichern
                     </button>
 
-                    <button id="btn-new-project"
-                        title="Neues Projekt erstellen">
+                    <button
+                        id="btn-new-project"
+                        title="Neues Projekt erstellen"
+                    >
                         Neu
                     </button>
 
-                    <button id="btn-export"
-                        title="Projekt als JSON-Datei exportieren">
+                    <button
+                        id="btn-export"
+                        title="Projekt als JSON-Datei exportieren"
+                    >
                         Export
                     </button>
 
-                    <button id="btn-import"
-                        title="Projekt aus JSON-Datei importieren">
+                    <button
+                        id="btn-import"
+                        title="Projekt aus JSON-Datei importieren"
+                    >
                         Import
                     </button>
 
-                    <div class="toolbar-divider" aria-hidden="true"></div>
+                    <div
+                        class="toolbar-divider"
+                        aria-hidden="true"
+                    ></div>
 
-                    <button id="btn-undo"
+                    <button
+                        id="btn-undo"
                         title="Rückgängig (Strg+Z)"
-                        disabled>
+                        disabled
+                    >
                         &#x21A9;&#xFE0E; Rückgängig
                     </button>
 
-                    <button id="btn-redo"
+                    <button
+                        id="btn-redo"
                         title="Wiederholen (Strg+Y)"
-                        disabled>
+                        disabled
+                    >
                         &#x21AA;&#xFE0E; Wiederholen
                     </button>
                 </nav>
@@ -91,67 +107,120 @@
         <!-- ================================================ -->
         <main id="editor">
 
-            <!-- Bauteilbibliothek (wird durch PartLibraryUI.js befüllt) -->
+            <!-- Bauteilbibliothek und Seitenleisten-Panels -->
             <aside id="sidebar">
-                <!-- PartLibraryUI.js übernimmt diesen Bereich vollständig -->
+
+                <!-- Die PartLibraryUI.js übernimmt die Bauteilbibliothek. -->
+
+                <!-- Phase 8.4: Erweiterte Auswahl -->
+                <div
+                    id="selection-container"
+                    class="phase-panel-container"
+                ></div>
+
             </aside>
 
-            <!-- 3D-Szene -->
+
+            <!-- ============================================ -->
+            <!-- 3D-Szene                                     -->
+            <!-- ============================================ -->
             <section id="viewport">
 
                 <div id="canvas-container"></div>
 
-                <!-- Gruppierungsleiste (erscheint bei Mehrfachauswahl) -->
-                <div id="group-toolbar" class="group-toolbar hidden" aria-live="polite">
+                <!-- Gruppierungsleiste -->
+                <div
+                    id="group-toolbar"
+                    class="group-toolbar hidden"
+                    aria-live="polite"
+                >
 
-                    <span id="selection-info" class="selection-info"></span>
+                    <span
+                        id="selection-info"
+                        class="selection-info"
+                    ></span>
 
                     <div class="group-toolbar-actions">
-                        <button id="btn-group"
+
+                        <button
+                            id="btn-group"
                             title="Auswahl gruppieren (Strg+G)"
-                            disabled>
+                            disabled
+                        >
                             Gruppieren
                         </button>
-                        <button id="btn-ungroup"
+
+                        <button
+                            id="btn-ungroup"
                             title="Gruppierung auflösen (Strg+Umschalt+G)"
-                            disabled>
+                            disabled
+                        >
                             Auflösen
                         </button>
-                        <button id="btn-copy-selection"
-                            title="Auswahl kopieren (Strg+C)">
+
+                        <button
+                            id="btn-copy-selection"
+                            title="Auswahl kopieren (Strg+C)"
+                        >
                             Kopieren
                         </button>
-                        <button id="btn-duplicate-selection"
-                            title="Auswahl duplizieren (Strg+D)">
+
+                        <button
+                            id="btn-duplicate-selection"
+                            title="Auswahl duplizieren (Strg+D)"
+                        >
                             Duplizieren
                         </button>
-                        <button id="btn-delete-selection"
-                            title="Auswahl löschen (Entf)">
+
+                        <button
+                            id="btn-delete-selection"
+                            title="Auswahl löschen (Entf)"
+                        >
                             Löschen
                         </button>
+
                     </div>
 
                 </div>
 
             </section>
 
-            <!-- Werkzeugleiste -->
+
+            <!-- ============================================ -->
+            <!-- Werkzeugleiste                               -->
+            <!-- ============================================ -->
             <aside id="toolbar">
 
                 <h2>Werkzeuge</h2>
 
-                <button id="tool-select">Auswählen</button>
-                <button id="tool-place">Platzieren</button>
-                <button id="tool-move">Verschieben</button>
-                <button id="tool-rotate">Drehen (R)</button>
-                <button id="tool-delete">Löschen (Del)</button>
+                <button id="tool-select">
+                    Auswählen
+                </button>
+
+                <button id="tool-place">
+                    Platzieren
+                </button>
+
+                <button id="tool-move">
+                    Verschieben
+                </button>
+
+                <button id="tool-rotate">
+                    Drehen (R)
+                </button>
+
+                <button id="tool-delete">
+                    Löschen (Del)
+                </button>
 
                 <hr class="toolbar-hr">
 
                 <h2>Zwischenablage</h2>
 
-                <button id="tool-paste"
-                    title="Einfügen (Strg+V)">
+                <button
+                    id="tool-paste"
+                    title="Einfügen (Strg+V)"
+                >
                     Einfügen
                 </button>
 
@@ -162,8 +231,9 @@
     </div>
 
 
-    <!-- Verstecktes Datei-Eingabefeld für den Import -->
-    <!-- Wird von ProjectToolbar.js über btn-import geöffnet -->
+    <!-- ================================================ -->
+    <!-- Datei-Eingabefeld für den Projektimport          -->
+    <!-- ================================================ -->
     <input
         type="file"
         id="project-file-input"
@@ -171,7 +241,14 @@
         hidden
     >
 
-    <script type="module" src="/src/main.js"></script>
+
+    <!-- ================================================ -->
+    <!-- JavaScript-Einstiegspunkt                        -->
+    <!-- ================================================ -->
+    <script
+        type="module"
+        src="/src/main.js"
+    ></script>
 
 </body>
 

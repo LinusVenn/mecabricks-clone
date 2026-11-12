@@ -64,6 +64,7 @@ export class GroupTransformManager {
         this._originalRotations = new Map();
 
         this._pivotStart = new THREE.Vector3();
+        this._pivotStartRotation = new THREE.Euler();
         this._active     = false;
 
         /** @type {import('../history/HistoryManager.js').HistoryManager | null} */
@@ -164,65 +165,162 @@ export class GroupTransformManager {
     // TransformControls-Events
     // ------------------------------------------------------------------
 
-    _bindControlsEvents() {
-        // Beim Drag-Start: Positionen merken
-        this._controls.addEventListener('mouseDown', () => {
-            this._pivotStart.copy(this._pivot.position);
-            this._originalPositions.clear();
-            for (const b of this._selectedBricks) {
-                this._originalPositions.set(b.id, b.group.position.clone());
-            }
-        });
+    
+_bindControlsEvents() {
 
-        // Während des Ziehens: Delta berechnen und anwenden
-        this._controls.addEventListener('objectChange', () => {
-            const delta = this._pivot.position.clone().sub(this._pivotStart);
+    this._controls.addEventListener('mouseDown', () => {
 
-            // Snapping auf MOVE_STEP-Raster
+        this._pivotStart.copy(this._pivot.position);
+        this._pivotStartRotation.copy(this._pivot.rotation);
+
+        this._originalPositions.clear();
+        this._originalRotations.clear();
+
+        for (const brick of this._selectedBricks) {
+            this._originalPositions.set(
+                brick.id,
+                brick.group.position.clone()
+            );
+
+            this._originalRotations.set(
+                brick.id,
+                brick.group.rotation.clone()
+            );
+        }
+    });
+
+    this._controls.addEventListener('objectChange', () => {
+
+        if (this._controls.mode === 'translate') {
+
+            const delta = this._pivot.position.clone()
+                .sub(this._pivotStart);
+
             const snappedDelta = new THREE.Vector3(
                 Math.round(delta.x / MOVE_STEP) * MOVE_STEP,
                 Math.round(delta.y / MOVE_STEP) * MOVE_STEP,
-                Math.round(delta.z / MOVE_STEP) * MOVE_STEP,
+                Math.round(delta.z / MOVE_STEP) * MOVE_STEP
             );
 
-            for (const b of this._selectedBricks) {
-                const orig = this._originalPositions.get(b.id);
-                if (orig) b.group.position.copy(orig).add(snappedDelta);
-            }
-        });
+            for (const brick of this._selectedBricks) {
+                const original = this._originalPositions.get(brick.id);
 
-        // Nach dem Loslassen: finale Kollisionsprüfung + History
-        this._controls.addEventListener('mouseUp', () => {
-            const delta = this._pivot.position.clone().sub(this._pivotStart);
-            const snappedDelta = new THREE.Vector3(
-                Math.round(delta.x / MOVE_STEP) * MOVE_STEP,
-                Math.round(delta.y / MOVE_STEP) * MOVE_STEP,
-                Math.round(delta.z / MOVE_STEP) * MOVE_STEP,
-            );
-
-            // Keine Bewegung → nichts tun
-            if (snappedDelta.lengthSq() === 0) return;
-
-            if (this._hasCollision()) {
-                // Alle Steine zurücksetzen
-                for (const b of this._selectedBricks) {
-                    const orig = this._originalPositions.get(b.id);
-                    if (orig) b.group.position.copy(orig);
+                if (original) {
+                    brick.group.position.copy(original).add(snappedDelta);
+                    brick.group.updateMatrixWorld(true);
                 }
-                // Pivot ebenfalls zurücksetzen
-                this._pivot.position.copy(this._pivotStart);
-            } else {
-                this.historyManager?.saveState();
             }
-        });
 
-        // OrbitControls während Drag sperren
-        this._controls.addEventListener('dragging-changed', (event) => {
-            if (this._sceneManager?.controls) {
-                this._sceneManager.controls.enabled = !event.value;
+        } else if (this._controls.mode === 'rotate') {
+
+            const rawAngle = this._pivot.rotation.y -
+                this._pivotStartRotation.y;
+
+            const angle = Math.round(
+                rawAngle / ROTATION_STEP
+            ) * ROTATION_STEP;
+
+            const axis = new THREE.Vector3(0, 1, 0);
+
+            for (const brick of this._selectedBricks) {
+
+                const originalPosition =
+                    this._originalPositions.get(brick.id);
+
+                const originalRotation =
+                    this._originalRotations.get(brick.id);
+
+                if (!originalPosition || !originalRotation) continue;
+
+                const offset = originalPosition.clone()
+                    .sub(this._pivotStart);
+
+                offset.applyAxisAngle(axis, angle);
+
+                brick.group.position.copy(
+                    this._pivotStart.clone().add(offset)
+                );
+
+                brick.group.rotation.copy(originalRotation);
+                brick.group.rotation.y += angle;
+
+                brick.group.updateMatrixWorld(true);
             }
-        });
-    }
+        }
+    });
+
+    this._controls.addEventListener('mouseUp', () => {
+
+        const mode = this._controls.mode;
+
+        let changed = false;
+
+        if (mode === 'translate') {
+
+            const delta = this._pivot.position.clone()
+                .sub(this._pivotStart);
+
+            const snappedDelta = new THREE.Vector3(
+                Math.round(delta.x / MOVE_STEP) * MOVE_STEP,
+                Math.round(delta.y / MOVE_STEP) * MOVE_STEP,
+                Math.round(delta.z / MOVE_STEP) * MOVE_STEP
+            );
+
+            changed = snappedDelta.lengthSq() > 0;
+
+        } else if (mode === 'rotate') {
+
+            const rawAngle = this._pivot.rotation.y -
+                this._pivotStartRotation.y;
+
+            const angle = Math.round(
+                rawAngle / ROTATION_STEP
+            ) * ROTATION_STEP;
+
+            changed = Math.abs(angle) > 0.000001;
+        }
+
+        if (!changed) return;
+
+        if (this._hasCollision()) {
+
+            for (const brick of this._selectedBricks) {
+
+                const position =
+                    this._originalPositions.get(brick.id);
+
+                const rotation =
+                    this._originalRotations.get(brick.id);
+
+                if (position) {
+                    brick.group.position.copy(position);
+                }
+
+                if (rotation) {
+                    brick.group.rotation.copy(rotation);
+                }
+
+                brick.group.updateMatrixWorld(true);
+            }
+
+            this._pivot.position.copy(this._pivotStart);
+            this._pivot.rotation.copy(this._pivotStartRotation);
+
+        } else {
+
+            this.historyManager?.saveState();
+
+        }
+    });
+
+    this._controls.addEventListener('dragging-changed', (event) => {
+
+        if (this._sceneManager?.controls) {
+            this._sceneManager.controls.enabled = !event.value;
+        }
+    });
+}
+
 
 
     // ------------------------------------------------------------------

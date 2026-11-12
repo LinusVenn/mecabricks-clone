@@ -130,31 +130,41 @@ export class PlacementManager {
 
   }
 
-  placeBrick() {
+  
+placeBrick() {
 
     if (!this.selectedPart) return null;
 
     if (!this.previewPosition || !this.previewValid) {
-      return null;
+        return null;
     }
 
     const brick = this.library.addBrick(
-      this.previewPosition.x,
-      this.previewPosition.y,
-      this.previewPosition.z,
-      this.selectedColor,
-      this.selectedPart
+        this.previewPosition.x,
+        this.previewPosition.y,
+        this.previewPosition.z,
+        this.selectedColor,
+        this.selectedPart
     );
+
+    if (!brick) {
+        return null;
+    }
+
+    // Verbindungen zuerst erstellen, damit sie
+    // ebenfalls im History-Snapshot enthalten sind.
+    this.createConnections(brick);
 
     if (this.editor?.historyManager) {
         this.editor.historyManager.saveState();
     }
 
-    this.createConnections(brick);
+    // Anschließend den vollständigen Zustand speichern.
+    this.editor?.historyManager?.saveState();
 
     return brick;
+}
 
-  }
 
   createConnections(brick) {
 

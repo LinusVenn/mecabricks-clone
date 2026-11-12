@@ -20,10 +20,11 @@ export class HistoryManager {
      * @param {function} onChange
      * @param {import('../editor/GroupManager.js').GroupManager | null} groupManager
      */
-    constructor(library, connectionManager, maxHistory = 50, onRestore = null, onChange = null, groupManager = null) {
+    constructor(library, connectionManager, maxHistory = 50, onRestore = null, onChange = null, groupManager = null, componentLibrary = null) {
         this.library = library;
         this.connectionManager = connectionManager;
         this.groupManager = groupManager;
+        this.componentLibrary = componentLibrary;
         this.maxHistory = maxHistory;
         this.onRestore = onRestore;
 
@@ -46,6 +47,7 @@ export class HistoryManager {
 
         this.history = [];
         this.currentIndex = -1;
+        
     }
 
     initialize() {
@@ -59,7 +61,8 @@ export class HistoryManager {
         const snapshot = ModelSnapshot.capture(
             this.library,
             this.connectionManager,
-            this.groupManager
+            this.groupManager,
+            this.componentLibrary
         );
 
         const newState = ModelSnapshot.clone(snapshot);
@@ -153,7 +156,8 @@ export class HistoryManager {
             snapshot,
             this.library,
             this.connectionManager,
-            this.groupManager
+            this.groupManager,
+            this.componentLibrary
         );
 
         this.currentIndex = index;

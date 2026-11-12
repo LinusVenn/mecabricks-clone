@@ -1,16 +1,16 @@
-
 export class ModelSnapshot {
 
-    /**
-     * @param {object}  library
-     * @param {object}  connectionManager
-     * @param {import('../editor/GroupManager.js').GroupManager | null} [groupManager]
-     */
-    static capture(library, connectionManager, groupManager = null) {
+    static capture(
+        library,
+        connectionManager,
+        groupManager = null,
+        componentLibrary = null
+    ) {
         return {
-            bricks:      library.getAllData(),
+            bricks: library.getAllData(),
             connections: connectionManager.toData(),
-            groups:      groupManager ? groupManager.toData() : [],
+            groups: groupManager ? groupManager.toData() : [],
+            components: componentLibrary ? componentLibrary.toData() : []
         };
     }
 
@@ -18,27 +18,40 @@ export class ModelSnapshot {
         return JSON.parse(JSON.stringify(snapshot));
     }
 
-    /**
-     * @param {object}  snapshot
-     * @param {object}  library
-     * @param {object}  connectionManager
-     * @param {import('../editor/GroupManager.js').GroupManager | null} [groupManager]
-     */
-    static restore(snapshot, library, connectionManager, groupManager = null) {
+    static restore(
+        snapshot,
+        library,
+        connectionManager,
+        groupManager = null,
+        componentLibrary = null
+    ) {
         const data = ModelSnapshot.clone(snapshot);
 
         library.clear();
         connectionManager.clear();
         groupManager?.clear();
+        componentLibrary?.clear();
 
         for (const brickData of data.bricks) {
             library.addBrickFromData(brickData);
         }
 
-        connectionManager.loadFromData(data.connections, library);
+        connectionManager.loadFromData(
+            data.connections,
+            library
+        );
 
         if (groupManager && Array.isArray(data.groups)) {
-            groupManager.loadFromData(data.groups, library);
+            groupManager.loadFromData(
+                data.groups,
+                library
+            );
+        }
+
+        if (componentLibrary) {
+            componentLibrary.loadFromData(
+                data.components ?? []
+            );
         }
     }
 }

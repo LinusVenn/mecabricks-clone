@@ -1,331 +1,784 @@
 
-import { SelectionManager }         from './SelectionManager.js';
-import { TransformManager }         from './TransformManager.js';
-import { InputManager }             from './InputManager.js';
-import { MultiSelectionManager }    from './MultiSelectionManager.js';
-import { SelectionBox }             from './SelectionBox.js';
-import { GroupManager }             from './GroupManager.js';
-import { GroupTransformManager }    from './GroupTransformManager.js';
-import { CopyPasteManager }         from './CopyPasteManager.js';
+import { SelectionManager } from './SelectionManager.js';
+import { TransformManager } from './TransformManager.js';
+import { InputManager } from './InputManager.js';
+import { MultiSelectionManager } from './MultiSelectionManager.js';
+import { SelectionBox } from './SelectionBox.js';
+import { GroupManager } from './GroupManager.js';
+import { GroupTransformManager } from './GroupTransformManager.js';
+import { CopyPasteManager } from './CopyPasteManager.js';
 
-import { PartPalette }      from '../ui/PartPalette.js';
-import { SnapSystem }       from './SnapSystem.js';
+import { PartPalette } from '../ui/PartPalette.js';
+import { SnapSystem } from './SnapSystem.js';
 import { CollisionManager } from './CollisionManager.js';
 import { ConnectionManager } from './ConnectionManager.js';
 import { PlacementPreview } from './PlacementPreview.js';
 import { PlacementManager } from './PlacementManager.js';
+import { CoordinateSystem } from './CoordinateSystem.js';
+import { TransformConstraintManager } from './TransformConstraintManager.js';
+import { TransformGizmo } from './TransformGizmo.js';
+import { TransformInputManager } from './TransformInputManager.js';
+import { AssemblyManager } from '../assemblies/AssemblyManager.js';
+import { ComponentLibrary } from '../assemblies/ComponentLibrary.js';
+import { ComponentManager } from '../assemblies/ComponentManager.js';
 
 
 export class Editor {
 
     constructor(sceneManager, library) {
 
+        if (!sceneManager || !library) {
+            throw new Error('Editor benötigt einen SceneManager und eine PartLibrary.');
+        }
+
         this.sceneManager = sceneManager;
-        this.library      = library;
+        this.library = library;
 
-        const camera   = sceneManager.camera;
+        const camera = sceneManager.camera;
         const renderer = sceneManager.renderer;
-        const scene    = sceneManager.scene;
+        const scene = sceneManager.scene;
 
-        // ── Bestehende Systeme ────────────────────────────────────────────
+        // ---------------------------------------------------------
+        // Bestehende Systeme
+        // ---------------------------------------------------------
 
-        this.snapSystem       = new SnapSystem();
+        this.snapSystem = new SnapSystem();
         this.collisionManager = new CollisionManager();
         this.connectionManager = new ConnectionManager();
 
         this.placementPreview = new PlacementPreview(scene);
 
         this.placementManager = new PlacementManager(
-            camera, renderer, scene, library,
-            this.snapSystem, this.collisionManager,
-            this.connectionManager, this.placementPreview
+            camera,
+            renderer,
+            scene,
+            library,
+            this.snapSystem,
+            this.collisionManager,
+            this.connectionManager,
+            this.placementPreview
         );
 
-        this.selectionManager = new SelectionManager(camera, renderer, scene);
+        // PlacementManager benötigt Zugriff auf die History des Editors.
+        // Der HistoryManager kann später zugewiesen werden.
+        this.placementManager.editor = this;
+
+        this.selectionManager = new SelectionManager(
+            camera,
+            renderer,
+            scene
+        );
 
         this.transformManager = new TransformManager(
-            camera, renderer, scene, sceneManager,
-            this.collisionManager, this.library
+            camera,
+            renderer,
+            scene,
+            sceneManager,
+            this.collisionManager,
+            this.library
         );
 
         this.inputManager = new InputManager(this);
-        this.partPalette  = new PartPalette(this);
+        this.partPalette = new PartPalette(this);
 
         /** @type {import('../history/HistoryManager.js').HistoryManager | null} */
         this.historyManager = null;
 
-        // ── Phase 6: Mehrfachauswahl & Gruppen ───────────────────────────
+        // ---------------------------------------------------------
+        // Mehrfachauswahl und Gruppen
+        // ---------------------------------------------------------
 
         this.multiSelectionManager = new MultiSelectionManager();
 
         this.selectionBox = new SelectionBox(
-            camera, renderer, this.multiSelectionManager, library, sceneManager.controls
+            camera,
+            renderer,
+            this.multiSelectionManager,
+            library,
+            sceneManager.controls
         );
 
-        // SelectionManager muss einen Space+Drag als Bereichsauswahl erkennen
-        // und darf dabei keine normale Einzel-/Mehrfachauswahl auslösen.
+        // SelectionBox mit dem SelectionManager verbinden.
         this.selectionManager.selectionBox = this.selectionBox;
 
-        // Im Platzierungsmodus hat das Setzen eines Bauteils Vorrang.
-        this.selectionBox.canStart = () => !this.placementManager.selectedPart;
+        // Bereichsauswahl nur erlauben, wenn kein Bauteil platziert wird.
+        this.selectionBox.canStart = () => {
+            return !this.placementManager.selectedPart;
+        };
 
         this.groupManager = new GroupManager();
 
         this.groupTransformManager = new GroupTransformManager(
-            camera, renderer, scene, sceneManager,
-            this.collisionManager, this.library
+            camera,
+            renderer,
+            scene,
+            sceneManager,
+            this.collisionManager,
+            this.library
+        );
+
+        // ---------------------------------------------------------
+        // Phase 8.3: Baugruppen und wiederverwendbare Komponenten
+        // ---------------------------------------------------------
+
+        this.componentLibrary = new ComponentLibrary();
+
+        this.assemblyManager = new AssemblyManager(
+            this.groupManager,
+            this.library,
+            this.connectionManager
+        );
+
+        this.componentManager = new ComponentManager(
+            this.componentLibrary,
+            this.library,
+            this.connectionManager,
+            this.groupManager
         );
 
         this.copyPasteManager = new CopyPasteManager();
 
+        // ---------------------------------------------------------
+        // Phase 8.2: Erweiterte Transformation
+        // ---------------------------------------------------------
+
+        this.coordinateSystem = new CoordinateSystem('world');
+
+        this.transformConstraintManager = new TransformConstraintManager(
+            this.snapSystem,
+            this.collisionManager,
+            this.library
+        );
+
+        this.transformGizmo = new TransformGizmo(
+            this,
+            this.coordinateSystem
+        );
+
+        this.transformInputManager = new TransformInputManager(
+            this,
+            this.transformConstraintManager
+        );
+
         /**
-         * Wird von main.js gesetzt und erlaubt Editor-Aktionen die UI
-         * über den aktuellen Gruppenkontext zu informieren.
+         * Callback für die Aktualisierung der Gruppen-UI.
+         * Wird von main.js gesetzt.
+         *
          * @type {((count: number, groupName: string|null) => void) | null}
          */
         this.onGroupUIUpdate = null;
 
-        // ── Callbacks verdrahten ──────────────────────────────────────────
+        // ---------------------------------------------------------
+        // Event-Handler speichern
+        // ---------------------------------------------------------
+
+        this._placementHandlers = null;
+
+        // ---------------------------------------------------------
+        // Callbacks und Events einrichten
+        // ---------------------------------------------------------
 
         this._wireCallbacks();
         this.setupPlacementEvents();
     }
 
 
-    // -----------------------------------------------------------------------
-    // Interne Verdrahtung
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // Interne Callback-Verdrahtung
+    // -------------------------------------------------------------
 
     _wireCallbacks() {
 
-        // Einzelauswahl → TransformManager (bisheriges Verhalten)
+        // ---------------------------------------------------------
+        // Einzelauswahl
+        // ---------------------------------------------------------
+
         this.selectionManager.onSelectionChanged = (object) => {
+
             if (object) {
-                // Einzelauswahl: GroupTransformManager deaktivieren
+
+                // Gruppentransformation deaktivieren.
                 this.groupTransformManager.detach();
+
+                // Normale Transformation aktivieren.
                 this.transformManager.attach(object);
+
             } else {
-                this.transformManager.detach();
-            }
-        };
 
-        // Strg-Klick → Mehrfachauswahl umschalten
-        this.selectionManager.onCtrlClick = (brickId) => {
-            const brick = this.library.getById(brickId);
-            if (brick) {
-                // Einzelauswahl aufheben (TransformManager loslassen)
-                this.selectionManager.clearSelection();
                 this.transformManager.detach();
-                this.multiSelectionManager.toggleSelection(brick);
-            }
-        };
 
-        // Klick auf leere Stelle → Mehrfachauswahl aufheben
-        this.selectionManager.onEmptyClick = () => {
-            this.multiSelectionManager.clearSelection();
-            this.groupTransformManager.detach();
-        };
-
-        // Mehrfachauswahl-Änderung → GroupTransformManager oder aufheben
-        this.multiSelectionManager.onSelectionChanged = (ids) => {
-            if (ids.length > 1) {
-                // Mehrere gewählt: GroupTransformManager übernimmt
-                this.selectionManager.clearSelection();
-                this.transformManager.detach();
-                const bricks = this.multiSelectionManager.getSelectedBricks(this.library);
-                this.groupTransformManager.attach(bricks);
-            } else if (ids.length === 1) {
-                // Genau einer: als Einzelauswahl behandeln
-                this.groupTransformManager.detach();
-                const brick = this.library.getById(ids[0]);
-                if (brick) this.selectionManager.selectObject(brick.group);
-            } else {
-                // Leer: alles trennen
-                this.groupTransformManager.detach();
             }
+
             this._notifyGroupUI();
         };
 
-        // SelectionBox deaktivieren wenn Placement-Modus aktiv
-        // (wird in setupPlacementEvents gesetzt)
+
+        // ---------------------------------------------------------
+        // Strg-Klick: Mehrfachauswahl umschalten
+        // ---------------------------------------------------------
+
+        this.selectionManager.onCtrlClick = (brickId) => {
+
+            const brick = this.library.getById(brickId);
+
+            if (!brick) return;
+
+            // Einzelauswahl aufheben.
+            this.selectionManager.clearSelection();
+
+            this.transformManager.detach();
+
+            // Bauteil zur Mehrfachauswahl hinzufügen oder entfernen.
+            this.multiSelectionManager.toggleSelection(brick);
+        };
+
+
+        // ---------------------------------------------------------
+        // Klick auf eine leere Stelle
+        // ---------------------------------------------------------
+
+        this.selectionManager.onEmptyClick = () => {
+
+            this.multiSelectionManager.clearSelection();
+
+            this.groupTransformManager.detach();
+
+            this.transformManager.detach();
+
+            this._notifyGroupUI();
+        };
+
+
+        // ---------------------------------------------------------
+        // Änderungen der Mehrfachauswahl
+        // ---------------------------------------------------------
+
+        this.multiSelectionManager.onSelectionChanged = (ids) => {
+
+            if (ids.length > 1) {
+
+                // Mehrere Bauteile ausgewählt.
+                this.selectionManager.clearSelection();
+
+                this.transformManager.detach();
+
+                const bricks = this.multiSelectionManager
+                    .getSelectedBricks(this.library);
+
+                if (bricks.length > 1) {
+                    this.groupTransformManager.attach(bricks);
+                } else {
+                    this.groupTransformManager.detach();
+                }
+
+            } else if (ids.length === 1) {
+
+                // Genau ein Bauteil ausgewählt.
+                this.groupTransformManager.detach();
+
+                const brick = this.library.getById(ids[0]);
+
+                if (brick) {
+                    this.selectionManager.selectObject(brick.group);
+                }
+
+            } else {
+
+                // Keine Bauteile ausgewählt.
+                this.groupTransformManager.detach();
+
+            }
+
+            this._notifyGroupUI();
+        };
     }
 
 
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------
     // Platzierungs-Events
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------
 
     setupPlacementEvents() {
 
         const canvas = this.sceneManager.renderer.domElement;
 
-        canvas.addEventListener('pointermove', event => {
-            this.placementManager.updatePreview(event);
-        });
+        if (!canvas) {
+            throw new Error('Renderer besitzt kein DOM-Element.');
+        }
 
-        canvas.addEventListener('pointerdown', event => {
+        // Verhindert, dass Events mehrfach registriert werden.
+        this.removePlacementEvents();
+
+        const onPointerMove = (event) => {
+
+            this.placementManager.updatePreview(event);
+
+        };
+
+        const onPointerDown = (event) => {
+
             if (event.button !== 0) return;
+
             if (!this.placementManager.selectedPart) return;
+
+            // Während einer Bereichsauswahl mit gedrückter Leertaste
+            // darf kein Bauteil platziert werden.
             if (this.selectionBox.isSpacePressed()) return;
 
-            // Im Placement-Modus wird die Bereichsauswahl durch
-            // selectionBox.canStart() blockiert.
             event.stopPropagation();
-            this.placementManager.placeBrick();
-        });
 
+            this.placementManager.placeBrick();
+        };
+
+        canvas.addEventListener('pointermove', onPointerMove);
+        canvas.addEventListener('pointerdown', onPointerDown);
+
+        this._placementHandlers = {
+            canvas,
+            onPointerMove,
+            onPointerDown
+        };
     }
 
 
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // Platzierungs-Events entfernen
+    // -------------------------------------------------------------
+
+    removePlacementEvents() {
+
+        if (!this._placementHandlers) return;
+
+        const {
+            canvas,
+            onPointerMove,
+            onPointerDown
+        } = this._placementHandlers;
+
+        canvas.removeEventListener('pointermove', onPointerMove);
+        canvas.removeEventListener('pointerdown', onPointerDown);
+
+        this._placementHandlers = null;
+    }
+
+
+    // -------------------------------------------------------------
     // Bauteile löschen
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------
 
     deleteSelected() {
 
-        const multiCount = this.multiSelectionManager.getSelectionCount();
+        const multiCount =
+            this.multiSelectionManager.getSelectionCount();
+
+        // ---------------------------------------------------------
+        // Mehrfachauswahl löschen
+        // ---------------------------------------------------------
 
         if (multiCount > 0) {
-            // Mehrfachauswahl löschen
-            const bricks = this.multiSelectionManager.getSelectedBricks(this.library);
+
+            const bricks = this.multiSelectionManager
+                .getSelectedBricks(this.library);
+
+            let deletedAny = false;
+
             for (const brick of bricks) {
+
+                if (!brick) continue;
+
+                // Verbindungen entfernen.
                 this.connectionManager.removeConnections(brick.id);
-                const group = this.groupManager.getGroupByBrickId(brick.id);
-                if (group) this.groupManager.removeBrickFromGroup(group.id, brick.id);
-                this.library.removeBrick(brick);
+
+                // Gruppenmitgliedschaft entfernen.
+                const group = this.groupManager
+                    .getGroupByBrickId(brick.id);
+
+                if (group) {
+                    this.groupManager.removeBrickFromGroup(
+                        group.id,
+                        brick.id
+                    );
+                }
+
+                // Bauteil aus der Bibliothek entfernen.
+                const removed = this.library.removeBrick(brick);
+
+                if (removed !== false) {
+                    deletedAny = true;
+                }
             }
+
             this.multiSelectionManager.clearSelection();
+
+            this.selectionManager.clearSelection();
+
+            this.transformManager.detach();
             this.groupTransformManager.detach();
-            this.historyManager?.saveState();
+
+            if (deletedAny) {
+                this.historyManager?.saveState();
+            }
+
+            this._notifyGroupUI();
+
             return;
         }
 
-        // Einzelauswahl löschen (bestehendes Verhalten)
+
+        // ---------------------------------------------------------
+        // Einzelauswahl löschen
+        // ---------------------------------------------------------
+
         const selected = this.selectionManager.selectedObject;
+
         if (!selected) return;
 
-        const brick = this.library.getById(selected.userData.brickId);
+        const brickId = selected.userData?.brickId;
+
+        if (!brickId) return;
+
+        const brick = this.library.getById(brickId);
+
         if (!brick) return;
 
+        // Verbindungen entfernen.
         this.connectionManager.removeConnections(brick.id);
-        const grp = this.groupManager.getGroupByBrickId(brick.id);
-        if (grp) this.groupManager.removeBrickFromGroup(grp.id, brick.id);
 
+        // Gruppenmitgliedschaft entfernen.
+        const group = this.groupManager
+            .getGroupByBrickId(brick.id);
+
+        if (group) {
+            this.groupManager.removeBrickFromGroup(
+                group.id,
+                brick.id
+            );
+        }
+
+        // Bauteil entfernen.
         const removed = this.library.removeBrick(brick);
-        if (!removed) return;
 
+        if (removed === false) return;
+
+        // Auswahl und Transformation zurücksetzen.
         this.selectionManager.clearSelection();
+
+        this.multiSelectionManager.clearSelection();
+
+        this.transformManager.detach();
+        this.groupTransformManager.detach();
+
+        // History aktualisieren.
         this.historyManager?.saveState();
-    }
 
-
-    // -----------------------------------------------------------------------
-    // Gruppen-Operationen
-    // -----------------------------------------------------------------------
-
-    groupSelected() {
-        const bricks = this.multiSelectionManager.getSelectedBricks(this.library);
-        if (bricks.length < 2) return;
-
-        const name = window.prompt('Gruppenname:', 'Gruppe');
-        if (name === null) return;   // Abbrechen
-
-        this.groupManager.createGroup(bricks, name.trim() || 'Gruppe');
-        this.historyManager?.saveState();
         this._notifyGroupUI();
     }
 
+
+    // -------------------------------------------------------------
+    // Gruppen erstellen
+    // -------------------------------------------------------------
+
+    groupSelected() {
+
+        const bricks = this.multiSelectionManager
+            .getSelectedBricks(this.library);
+
+        if (bricks.length < 2) return;
+
+        const name = window.prompt(
+            'Gruppenname:',
+            'Gruppe'
+        );
+
+        if (name === null) return;
+
+        const groupName = name.trim() || 'Gruppe';
+
+        this.groupManager.createGroup(
+            bricks,
+            groupName
+        );
+
+        this.historyManager?.saveState();
+
+        this._notifyGroupUI();
+    }
+
+
+    // -------------------------------------------------------------
+    // Gruppen auflösen
+    // -------------------------------------------------------------
+
     ungroupSelected() {
-        // Alle Gruppen der selektierten Steine auflösen
-        const bricks = this.multiSelectionManager.getSelectedBricks(this.library);
-        const ids = new Set(bricks.map(b => b.id));
+
+        const bricks = this.multiSelectionManager
+            .getSelectedBricks(this.library);
+
+        const ids = new Set(
+            bricks.map(brick => brick.id)
+        );
 
         const groupIds = new Set();
+
+        // Gruppen der Mehrfachauswahl ermitteln.
         for (const id of ids) {
-            const g = this.groupManager.getGroupByBrickId(id);
-            if (g) groupIds.add(g.id);
+
+            const group = this.groupManager
+                .getGroupByBrickId(id);
+
+            if (group) {
+                groupIds.add(group.id);
+            }
         }
 
-        // Auch einzeln ausgewählter Stein kann zu einer Gruppe gehören
+        // Auch die Einzelauswahl berücksichtigen.
         const single = this.selectionManager.selectedObject;
+
         if (single) {
-            const g = this.groupManager.getGroupByBrickId(single.userData.brickId);
-            if (g) groupIds.add(g.id);
+
+            const brickId = single.userData?.brickId;
+
+            if (brickId) {
+
+                const group = this.groupManager
+                    .getGroupByBrickId(brickId);
+
+                if (group) {
+                    groupIds.add(group.id);
+                }
+            }
         }
 
         if (groupIds.size === 0) return;
 
-        for (const gId of groupIds) {
-            this.groupManager.ungroup(gId);
+        // Alle ermittelten Gruppen auflösen.
+        for (const groupId of groupIds) {
+            this.groupManager.ungroup(groupId);
         }
 
         this.historyManager?.saveState();
+
         this._notifyGroupUI();
     }
 
 
-    // -----------------------------------------------------------------------
-    // Kopieren / Einfügen / Duplizieren
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // Kopieren
+    // -------------------------------------------------------------
 
     copySelected() {
+
         const bricks = this._getActiveSelection();
+
         if (bricks.length === 0) return;
 
-        const g = bricks.length > 0
-            ? this.groupManager.getGroupByBrickId(bricks[0].id)
-            : null;
+        const group = this.groupManager
+            .getGroupByBrickId(bricks[0].id);
 
-        this.copyPasteManager.copy(bricks, this.connectionManager, g?.name ?? null);
+        this.copyPasteManager.copy(
+            bricks,
+            this.connectionManager,
+            group?.name ?? null
+        );
     }
+
+
+    // -------------------------------------------------------------
+    // Einfügen
+    // -------------------------------------------------------------
 
     pasteSelected() {
-        this.copyPasteManager.paste(
-            this.library, this.connectionManager,
-            this.groupManager, this.historyManager
-        );
-    }
 
-    duplicateSelected() {
-        const bricks = this._getActiveSelection();
-        if (bricks.length === 0) return;
-        this.copyPasteManager.duplicate(
-            bricks, this.connectionManager,
-            this.library, this.groupManager,
+        this.copyPasteManager.paste(
+            this.library,
+            this.connectionManager,
+            this.groupManager,
             this.historyManager
         );
+
+        this._notifyGroupUI();
     }
 
 
-    // -----------------------------------------------------------------------
-    // Hilfsmethoden
-    // -----------------------------------------------------------------------
+    // -------------------------------------------------------------
+    // Duplizieren
+    // -------------------------------------------------------------
+
+    duplicateSelected() {
+
+        const bricks = this._getActiveSelection();
+
+        if (bricks.length === 0) return;
+
+        this.copyPasteManager.duplicate(
+            bricks,
+            this.connectionManager,
+            this.library,
+            this.groupManager,
+            this.historyManager
+        );
+
+        this._notifyGroupUI();
+    }
+
+
+    // -------------------------------------------------------------
+    // Aktive Auswahl ermitteln
+    // -------------------------------------------------------------
 
     /**
-     * Gibt die aktuell aktiven Steine zurück (Mehrfach- oder Einzelauswahl).
+     * Gibt die aktuell aktiven Bauteile zurück.
+     * Berücksichtigt Einzel- und Mehrfachauswahl.
+     *
      * @returns {import('../objects/Brick.js').Brick[]}
      */
     _getActiveSelection() {
-        const multiCount = this.multiSelectionManager.getSelectionCount();
+
+        const multiCount =
+            this.multiSelectionManager.getSelectionCount();
+
         if (multiCount > 0) {
-            return this.multiSelectionManager.getSelectedBricks(this.library);
+
+            return this.multiSelectionManager
+                .getSelectedBricks(this.library);
         }
+
         const single = this.selectionManager.selectedObject;
+
         if (single) {
-            const brick = this.library.getById(single.userData.brickId);
+
+            const brickId = single.userData?.brickId;
+
+            if (!brickId) return [];
+
+            const brick = this.library.getById(brickId);
+
             return brick ? [brick] : [];
         }
+
         return [];
     }
 
+
+    // -------------------------------------------------------------
+    // Gruppen-UI aktualisieren
+    // -------------------------------------------------------------
+
     _notifyGroupUI() {
-        const bricks    = this._getActiveSelection();
+
+        const bricks = this._getActiveSelection();
+
         const groupData = bricks.length > 0
             ? this.groupManager.getGroupByBrickId(bricks[0].id)
             : null;
-        const count     = this.multiSelectionManager.getSelectionCount() ||
-                          (this.selectionManager.selectedObject ? 1 : 0);
 
-        this.onGroupUIUpdate?.(count, groupData?.name ?? null);
+        const count =
+            this.multiSelectionManager.getSelectionCount() ||
+            (this.selectionManager.selectedObject ? 1 : 0);
+
+        this.onGroupUIUpdate?.(
+            count,
+            groupData?.name ?? null
+        );
     }
+
+
+    // -------------------------------------------------------------
+    // Editor aufräumen
+    // -------------------------------------------------------------
+
+    dispose() {
+
+        this.removePlacementEvents();
+
+        this.placementManager.cancelPlacement();
+
+        this.selectionBox.dispose?.();
+
+        this.transformManager.detach();
+        this.groupTransformManager.detach();
+
+        this.multiSelectionManager.clearSelection();
+
+        this.selectionManager.clearSelection();
+    }
+
+    // -------------------------------------------------------------
+// Aktive Baugruppe als Komponente speichern
+// -------------------------------------------------------------
+
+saveSelectedAsComponent(name = null) {
+    const bricks = this._getActiveSelection();
+
+    if (bricks.length === 0) {
+        throw new Error('Es sind keine Bauteile ausgewählt.');
+    }
+
+    const group = this.groupManager.getGroupByBrickId(
+        bricks[0].id
+    );
+
+    if (!group) {
+        throw new Error(
+            'Die ausgewählten Bauteile gehören keiner Baugruppe an.'
+        );
+    }
+
+    const selectedIds = new Set(bricks.map(brick => brick.id));
+
+    if (
+        group.brickIds.length !== selectedIds.size ||
+        group.brickIds.some(id => !selectedIds.has(id))
+    ) {
+        throw new Error(
+            'Bitte wähle die gesamte Baugruppe aus, um sie als Komponente zu speichern.'
+        );
+    }
+
+    return this.componentManager.saveGroup(
+        group.id,
+        name
+    );
+}
+
+
+// -------------------------------------------------------------
+// Komponente einsetzen
+// -------------------------------------------------------------
+
+insertComponent(componentId, position) {
+    const result = this.componentManager.insert(
+        componentId,
+        position
+    );
+
+    // Neue Baugruppe auswählen.
+    this.multiSelectionManager.setSelection(result.bricks);
+
+    this._notifyGroupUI();
+
+    return result;
+}
+
+
+// -------------------------------------------------------------
+// Baugruppe duplizieren
+// -------------------------------------------------------------
+
+duplicateAssembly(groupId, offset = { x: 1, y: 0, z: 1 }) {
+    const result = this.assemblyManager.duplicate(
+        groupId,
+        offset
+    );
+
+    this.multiSelectionManager.setSelection(
+        result.bricks
+    );
+
+    this._notifyGroupUI();
+
+    return result;
+}
+
 }
