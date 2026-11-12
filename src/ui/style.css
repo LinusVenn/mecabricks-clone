@@ -1,0 +1,862 @@
+
+/* Grundeinstellungen */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  font-family: Arial, sans-serif;
+}
+
+
+/* Hauptcontainer */
+
+#app {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100vh;
+}
+
+
+/* ================================================ */
+/* Kopfzeile                                        */
+/* ================================================ */
+
+#header {
+  height: auto;
+  min-height: 60px;
+  background-color: #222;
+  color: white;
+
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  padding: 8px 20px;
+}
+
+#app-title {
+  font-size: 20px;
+  white-space: nowrap;
+}
+
+
+/* ================================================ */
+/* Projektwerkzeugleiste                            */
+/* ================================================ */
+
+#project-toolbar {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 5px;
+}
+
+
+/* Projektname + Speicherstatus */
+
+#project-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+#autosave-project-name {
+  font-size: 13px;
+  font-weight: bold;
+  color: #ffffff;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+
+  cursor: pointer;
+  border-bottom: 1px dashed transparent;
+  transition: border-color 0.15s;
+}
+
+#autosave-project-name:hover {
+  border-bottom-color: #aaa;
+}
+
+#autosave-indicator {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 10px;
+  white-space: nowrap;
+  transition: background-color 0.3s;
+}
+
+#autosave-indicator.autosave-idle {
+  background-color: transparent;
+  color: #888;
+}
+
+#autosave-indicator.autosave-saving {
+  background-color: #555;
+  color: #ccc;
+}
+
+#autosave-indicator.autosave-saved {
+  background-color: #2d6a2d;
+  color: #a8f0a8;
+}
+
+#autosave-indicator.autosave-error {
+  background-color: #8b1a1a;
+  color: #ffcccc;
+  cursor: help;
+}
+
+
+/* Schaltflächen der Projektwerkzeugleiste */
+
+#project-toolbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Toolbar-Buttons überschreiben die globalen Button-Stile */
+#project-toolbar-actions button {
+  width: auto;
+  min-width: 0;
+  padding: 4px 11px;
+  margin-bottom: 0;
+
+  font-size: 12px;
+  font-weight: normal;
+
+  background-color: #3a3a3a;
+  color: #e8e8e8;
+  border: 1px solid #555;
+  border-radius: 4px;
+
+  white-space: nowrap;
+  cursor: pointer;
+
+  transition: background-color 0.15s, opacity 0.15s;
+}
+
+#project-toolbar-actions button:hover {
+  background-color: #505050;
+}
+
+#project-toolbar-actions button:active {
+  background-color: #606060;
+}
+
+/* Deaktivierte Undo/Redo-Buttons */
+#project-toolbar-actions button:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
+/* Visueller Trenner zwischen Datei- und Bearbeitungs-Gruppe */
+.toolbar-divider {
+  width: 1px;
+  height: 18px;
+  background-color: #555;
+  margin: 0 3px;
+  flex-shrink: 0;
+}
+
+
+/* Editorbereich */
+
+#editor {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+
+/* Linke Bauteilpalette */
+
+#sidebar {
+  width: 280px;
+  min-width: 260px;
+  background-color: #f0f0f0;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+}
+
+
+/* ================================================
+   Bauteilbibliothek (PartLibraryUI)
+   ================================================ */
+
+#part-library {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* Kopfzeile: Titel */
+#library-header {
+  padding: 10px 12px 6px;
+  background: #e0e0e0;
+  border-bottom: 1px solid #ccc;
+  font-size: 13px;
+  font-weight: bold;
+  color: #333;
+  flex-shrink: 0;
+}
+
+/* Suchfeld */
+#library-search {
+  padding: 8px 10px 6px;
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+}
+
+#library-search-input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 6px 10px;
+  border: 1px solid #bbb;
+  border-radius: 16px;
+  font-size: 13px;
+  background: #fff;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+#library-search-input:focus {
+  border-color: #4a90d9;
+}
+
+/* Kategorie-Reiter */
+#library-categories {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 6px 10px;
+  border-bottom: 1px solid #ddd;
+  flex-shrink: 0;
+}
+
+.category-btn {
+  width: auto;
+  padding: 3px 8px;
+  margin-bottom: 0;
+  font-size: 11px;
+  border-radius: 12px;
+  border: 1px solid #bbb;
+  background: #fff;
+  cursor: pointer;
+  color: #444;
+  transition: background 0.15s, color 0.15s;
+}
+
+.category-btn:hover {
+  background: #e8e8e8;
+}
+
+.category-btn.active {
+  background: #4a90d9;
+  color: white;
+  border-color: #2a70b9;
+  font-weight: bold;
+}
+
+/* Treffer-Zähler */
+#library-results-count {
+  padding: 4px 12px;
+  font-size: 11px;
+  color: #888;
+  flex-shrink: 0;
+}
+
+/* Bauteil-Raster */
+#library-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+  align-content: start;
+}
+
+/* Einzelne Bauteil-Karte */
+.part-card {
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 6px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color 0.15s, box-shadow 0.15s;
+  user-select: none;
+  position: relative;
+}
+
+.part-card:hover {
+  border-color: #4a90d9;
+  box-shadow: 0 1px 4px rgba(74, 144, 217, 0.25);
+}
+
+.part-card.selected {
+  border-color: #4a90d9;
+  background-color: #edf5ff;
+  box-shadow: 0 0 0 2px rgba(74, 144, 217, 0.35);
+}
+
+.part-card.favorite .favorite-btn {
+  color: #f0a500;
+}
+
+.part-card-icon {
+  font-size: 22px;
+  line-height: 1;
+  margin-bottom: 3px;
+  color: #555;
+}
+
+.part-card-name {
+  font-size: 10px;
+  color: #444;
+  line-height: 1.2;
+  word-break: break-word;
+}
+
+.part-card-id {
+  font-size: 9px;
+  color: #aaa;
+  margin-top: 2px;
+}
+
+.favorite-btn {
+  position: absolute;
+  top: 3px;
+  right: 4px;
+  font-size: 12px;
+  color: #ccc;
+  cursor: pointer;
+  line-height: 1;
+  background: none;
+  border: none;
+  padding: 0;
+  width: auto;
+  margin-bottom: 0;
+}
+
+.favorite-btn:hover {
+  color: #f0a500;
+  background: none;
+}
+
+/* Detailbereich */
+#library-detail {
+  border-top: 1px solid #ddd;
+  background: #fff;
+  flex-shrink: 0;
+  max-height: 220px;
+  overflow: hidden;
+}
+
+#library-detail.hidden {
+  display: none;
+}
+
+#detail-preview-canvas {
+  width: 100%;
+  height: 110px;
+  display: block;
+  background: #2a2a35;
+}
+
+#detail-info {
+  padding: 6px 10px 8px;
+}
+
+#detail-name {
+  font-size: 12px;
+  font-weight: bold;
+  color: #222;
+  margin-bottom: 2px;
+}
+
+#detail-id {
+  font-size: 10px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+#detail-props {
+  font-size: 11px;
+  color: #555;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+#detail-description {
+  font-size: 10px;
+  color: #777;
+  margin-top: 3px;
+  font-style: italic;
+}
+
+/* Bereich "Zuletzt verwendet" */
+.library-section-label {
+  padding: 4px 8px 2px;
+  font-size: 10px;
+  font-weight: bold;
+  color: #888;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  grid-column: 1 / -1;
+}
+
+/* Keine Ergebnisse */
+.library-empty {
+  grid-column: 1 / -1;
+  text-align: center;
+  padding: 20px 10px;
+  font-size: 12px;
+  color: #aaa;
+}
+
+
+/* 3D-Viewport */
+
+#viewport {
+  flex: 1;
+  min-width: 0;
+  position: relative;
+  
+}
+
+#canvas-container {
+  width: 100%;
+  height: 100%;
+}
+
+
+/* Rechte Werkzeugleiste */
+
+#toolbar {
+  width: 180px;
+  background-color: #eeeeee;
+
+  padding: 15px;
+
+  border-left: 1px solid #ccc;
+}
+
+#toolbar h2 {
+  margin-bottom: 15px;
+}
+
+
+/* Buttons */
+
+button {
+  width: 100%;
+  padding: 10px;
+
+  margin-bottom: 8px;
+
+  border: 1px solid #bbb;
+  border-radius: 5px;
+
+  background-color: white;
+
+  cursor: pointer;
+  font-size: 14px;
+}
+
+button:hover {
+  background-color: #dddddd;
+}
+
+button:active {
+  background-color: #cccccc;
+}
+
+button.active {
+  background-color: #4a90d9;
+  color: white;
+  border-color: #2a70b9;
+  font-weight: bold;
+}
+
+
+/* Bauteilpalette */
+
+#part-palette {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+
+/* ── Bauteilbibliothek (PartLibraryUI) ─────────────────────────────── */
+
+#sidebar {
+  width: 270px;
+  background-color: #f4f4f4;
+  border-right: 1px solid #ccc;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.part-library {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+/* ── Suche ─────────────────────────────────────────────────────────── */
+
+.lib-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px;
+  border-bottom: 1px solid #ddd;
+  background: #fff;
+}
+
+.lib-search-input {
+  flex: 1;
+  padding: 6px 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 13px;
+  outline: none;
+}
+
+.lib-search-input:focus {
+  border-color: #4a90d9;
+  box-shadow: 0 0 0 2px rgba(74,144,217,0.2);
+}
+
+.lib-search-clear {
+  width: auto;
+  padding: 5px 8px;
+  margin-bottom: 0;
+  font-size: 12px;
+  background: #eee;
+  border: 1px solid #ccc;
+  color: #666;
+}
+
+.lib-search-clear:hover {
+  background: #ddd;
+  color: #333;
+}
+
+/* ── Kategorietabs ─────────────────────────────────────────────────── */
+
+.lib-category-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 6px 8px;
+  background: #eee;
+  border-bottom: 1px solid #ddd;
+}
+
+.lib-cat-btn {
+  width: auto;
+  padding: 3px 8px;
+  margin-bottom: 0;
+  font-size: 11px;
+  background: #fff;
+  border: 1px solid #bbb;
+  border-radius: 10px;
+  color: #444;
+  cursor: pointer;
+}
+
+.lib-cat-btn:hover {
+  background: #e0eeff;
+  border-color: #4a90d9;
+}
+
+.lib-cat-btn.active {
+  background: #4a90d9;
+  border-color: #2a70b9;
+  color: #fff;
+  font-weight: bold;
+}
+
+/* ── Trefferzahl ───────────────────────────────────────────────────── */
+
+.lib-count {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #888;
+  background: #f4f4f4;
+}
+
+/* ── Bauteilraster ─────────────────────────────────────────────────── */
+
+.lib-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px 6px 0;
+}
+
+.lib-grid::-webkit-scrollbar { width: 5px; }
+.lib-grid::-webkit-scrollbar-thumb { background: #bbb; border-radius: 3px; }
+
+.lib-section {
+  margin-bottom: 8px;
+}
+
+.lib-section-title {
+  font-size: 11px;
+  font-weight: bold;
+  color: #666;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  padding: 2px 2px 4px;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 4px;
+}
+
+.lib-section-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+/* ── Bauteilkarten ─────────────────────────────────────────────────── */
+
+.lib-card {
+  position: relative;
+  width: 74px;
+  height: 64px;
+  padding: 4px 4px 3px;
+  margin-bottom: 0;
+  background: #fff;
+  border: 2px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 2px;
+  transition: border-color 0.15s, transform 0.1s;
+}
+
+.lib-card:hover {
+  border-color: #4a90d9;
+  background: #f0f7ff;
+  transform: translateY(-1px);
+}
+
+.lib-card.selected {
+  border-color: #2a70b9;
+  background: #ddeeff;
+}
+
+.lib-card-star {
+  position: absolute;
+  top: 2px;
+  right: 4px;
+  font-size: 11px;
+  color: #ccc;
+  cursor: pointer;
+  line-height: 1;
+}
+
+.lib-card-star.active { color: #f0a000; }
+.lib-card-star:hover  { color: #f0a000; }
+
+.lib-card-dims {
+  font-size: 16px;
+  font-weight: bold;
+  color: #4a90d9;
+  line-height: 1.1;
+}
+
+.lib-card-name {
+  font-size: 9px;
+  color: #555;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 68px;
+}
+
+.lib-empty {
+  color: #999;
+  font-size: 12px;
+  text-align: center;
+  padding: 20px;
+}
+
+/* ── Detailbereich ─────────────────────────────────────────────────── */
+
+.lib-detail {
+  border-top: 2px solid #ccc;
+  background: #fff;
+  padding: 8px;
+  overflow-y: auto;
+  max-height: 340px;
+}
+
+.lib-detail-title {
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 6px;
+  color: #222;
+}
+
+.lib-detail-preview {
+  margin-bottom: 8px;
+  border-radius: 6px;
+  overflow: hidden;
+  background: #1e1e1e;
+}
+
+.lib-detail-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.lib-detail-table tr:nth-child(odd) { background: #f7f7f7; }
+
+.lib-detail-key {
+  padding: 2px 6px;
+  color: #666;
+  font-weight: bold;
+  white-space: nowrap;
+  width: 70px;
+}
+
+.lib-detail-table td:nth-child(2) {
+  padding: 2px 6px;
+  color: #333;
+}
+
+.lib-detail-desc {
+  font-size: 11px;
+  color: #777;
+  margin: 4px 0 6px;
+  font-style: italic;
+}
+
+.lib-detail-btn {
+  width: 100%;
+  padding: 7px;
+  margin-bottom: 0;
+  background: #4a90d9;
+  color: #fff;
+  border: none;
+  border-radius: 5px;
+  font-size: 13px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.lib-detail-btn:hover { background: #2a70b9; }
+
+
+/* ================================================ */
+/* Phase 6: Gruppierungs-Toolbar (Viewport-Overlay) */
+/* ================================================ */
+
+.group-toolbar {
+    position: absolute;
+    top: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+
+    background: rgba(30, 30, 30, 0.92);
+    color: #fff;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    border-radius: 8px;
+    padding: 8px 14px;
+    backdrop-filter: blur(4px);
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.4);
+
+    font-size: 13px;
+    pointer-events: auto;
+    transition: opacity 0.15s;
+}
+
+.group-toolbar.hidden {
+    display: none;
+}
+
+.selection-info {
+    color: #aaddff;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+.group-toolbar-actions {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+}
+
+.group-toolbar button {
+    background: #3a3a3a;
+    color: #fff;
+    border: 1px solid #555;
+    border-radius: 5px;
+    padding: 4px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    transition: background 0.1s, border-color 0.1s;
+    white-space: nowrap;
+}
+
+.group-toolbar button:hover:not(:disabled) {
+    background: #4a7fbb;
+    border-color: #4a7fbb;
+}
+
+.group-toolbar button:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* ── Viewport-Positionierung ── */
+
+#viewport {
+    position: relative;
+}
+
+/* ── Werkzeugleisten-Trennlinie ── */
+
+.toolbar-hr {
+    border: none;
+    border-top: 1px solid #444;
+    margin: 10px 0;
+}
+

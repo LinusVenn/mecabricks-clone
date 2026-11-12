@@ -1,0 +1,178 @@
+
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>LEGO 3D Editor</title>
+
+    <link rel="stylesheet" href="/src/ui/style.css">
+</head>
+
+<body>
+
+    <!-- Hauptcontainer -->
+    <div id="app">
+
+        <!-- ================================================ -->
+        <!-- Kopfzeile mit Projektwerkzeugleiste              -->
+        <!-- ================================================ -->
+        <header id="header">
+
+            <h1 id="app-title">LEGO 3D Editor</h1>
+
+            <!-- Projektwerkzeugleiste -->
+            <div id="project-toolbar">
+
+                <!-- Projektname und Speicherstatus -->
+                <div id="project-info">
+                    <span
+                        id="autosave-project-name"
+                        title="Klicken zum Umbenennen"
+                        role="button"
+                        tabindex="0"
+                    >Unbenanntes Projekt</span>
+                    <span
+                        id="autosave-indicator"
+                        class="autosave-idle"
+                        aria-live="polite"
+                    ></span>
+                </div>
+
+                <!-- Schaltflächen -->
+                <nav
+                    id="project-toolbar-actions"
+                    aria-label="Projektaktionen"
+                >
+                    <button id="btn-save"
+                        title="Projekt jetzt speichern (Strg+S)">
+                        Speichern
+                    </button>
+
+                    <button id="btn-new-project"
+                        title="Neues Projekt erstellen">
+                        Neu
+                    </button>
+
+                    <button id="btn-export"
+                        title="Projekt als JSON-Datei exportieren">
+                        Export
+                    </button>
+
+                    <button id="btn-import"
+                        title="Projekt aus JSON-Datei importieren">
+                        Import
+                    </button>
+
+                    <div class="toolbar-divider" aria-hidden="true"></div>
+
+                    <button id="btn-undo"
+                        title="Rückgängig (Strg+Z)"
+                        disabled>
+                        &#x21A9;&#xFE0E; Rückgängig
+                    </button>
+
+                    <button id="btn-redo"
+                        title="Wiederholen (Strg+Y)"
+                        disabled>
+                        &#x21AA;&#xFE0E; Wiederholen
+                    </button>
+                </nav>
+
+            </div>
+
+        </header>
+
+
+        <!-- ================================================ -->
+        <!-- Editorbereich                                    -->
+        <!-- ================================================ -->
+        <main id="editor">
+
+            <!-- Bauteilbibliothek (wird durch PartLibraryUI.js befüllt) -->
+            <aside id="sidebar">
+                <!-- PartLibraryUI.js übernimmt diesen Bereich vollständig -->
+            </aside>
+
+            <!-- 3D-Szene -->
+            <section id="viewport">
+
+                <div id="canvas-container"></div>
+
+                <!-- Gruppierungsleiste (erscheint bei Mehrfachauswahl) -->
+                <div id="group-toolbar" class="group-toolbar hidden" aria-live="polite">
+
+                    <span id="selection-info" class="selection-info"></span>
+
+                    <div class="group-toolbar-actions">
+                        <button id="btn-group"
+                            title="Auswahl gruppieren (Strg+G)"
+                            disabled>
+                            Gruppieren
+                        </button>
+                        <button id="btn-ungroup"
+                            title="Gruppierung auflösen (Strg+Umschalt+G)"
+                            disabled>
+                            Auflösen
+                        </button>
+                        <button id="btn-copy-selection"
+                            title="Auswahl kopieren (Strg+C)">
+                            Kopieren
+                        </button>
+                        <button id="btn-duplicate-selection"
+                            title="Auswahl duplizieren (Strg+D)">
+                            Duplizieren
+                        </button>
+                        <button id="btn-delete-selection"
+                            title="Auswahl löschen (Entf)">
+                            Löschen
+                        </button>
+                    </div>
+
+                </div>
+
+            </section>
+
+            <!-- Werkzeugleiste -->
+            <aside id="toolbar">
+
+                <h2>Werkzeuge</h2>
+
+                <button id="tool-select">Auswählen</button>
+                <button id="tool-place">Platzieren</button>
+                <button id="tool-move">Verschieben</button>
+                <button id="tool-rotate">Drehen (R)</button>
+                <button id="tool-delete">Löschen (Del)</button>
+
+                <hr class="toolbar-hr">
+
+                <h2>Zwischenablage</h2>
+
+                <button id="tool-paste"
+                    title="Einfügen (Strg+V)">
+                    Einfügen
+                </button>
+
+            </aside>
+
+        </main>
+
+    </div>
+
+
+    <!-- Verstecktes Datei-Eingabefeld für den Import -->
+    <!-- Wird von ProjectToolbar.js über btn-import geöffnet -->
+    <input
+        type="file"
+        id="project-file-input"
+        accept=".json,application/json"
+        hidden
+    >
+
+    <script type="module" src="/src/main.js"></script>
+
+</body>
+
+</html>
