@@ -158,11 +158,9 @@ describe('ProjectValidator', () => {
             );
         });
 
-        it('wirft für falsche version (2)', () => {
-            assert.throws(
-                () => validator.validate(validData({ version: 2 })),
-                { message: /Nicht unterstützte Projektversion/ }
-            );
+        it('akzeptiert version 2 (ab Phase 6 unterstützt)', () => {
+            // Version 2 ist seit Phase 6 gültig – darf NICHT werfen
+            assert.strictEqual(validator.validate(validData({ version: 2 })), true);
         });
 
         it('wirft für version als String', () => {
@@ -450,6 +448,56 @@ describe('ProjectValidator', () => {
             assert.doesNotThrow(() => validator.safeValidate('garbage'));
         });
 
+    });
+
+
+    // ── Phase 6: Version 2 ────────────────────────────────────────────────────
+
+    describe('validate() – Version 2 (Phase 6)', () => {
+
+        it('akzeptiert Projektdaten mit version 2', () => {
+            const data = validData({ version: 2 });
+            assert.strictEqual(validator.validate(data), true);
+        });
+
+        it('akzeptiert version 2 mit leerem groups-Array', () => {
+            const data = { ...validData({ version: 2 }), groups: [] };
+            assert.strictEqual(validator.validate(data), true);
+        });
+
+        it('akzeptiert version 2 ohne groups-Feld (rückwärtskompatibel)', () => {
+            const data = validData({ version: 2 });
+            delete data.groups;
+            assert.strictEqual(validator.validate(data), true);
+        });
+
+        it('akzeptiert version 1 weiterhin', () => {
+            assert.strictEqual(validator.validate(validData({ version: 1 })), true);
+        });
+
+        it('wirft für version 99 (nicht unterstützt)', () => {
+            assert.throws(
+                () => validator.validate(validData({ version: 99 })),
+                { message: /version/ }
+            );
+        });
+
+        it('wirft für version 0', () => {
+            assert.throws(
+                () => validator.validate(validData({ version: 0 })),
+                { message: /version/ }
+            );
+        });
+
+        it('Fehlermeldung für ungültige Version listet unterstützte Versionen auf', () => {
+            try {
+                validator.validate(validData({ version: 99 }));
+                assert.fail('Hätte werfen müssen');
+            } catch (err) {
+                assert.ok(err.message.includes('99'),
+                    `Fehlermeldung sollte ungültige Version nennen, war: ${err.message}`);
+            }
+        });
     });
 
 });

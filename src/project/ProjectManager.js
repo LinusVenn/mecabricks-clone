@@ -1,5 +1,12 @@
 import { ProjectSerializer } from './ProjectSerializer.js';
 
+function _generateProjectId() {
+    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+    }
+    return `project-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export class ProjectManager {
 
     constructor(
@@ -15,10 +22,13 @@ export class ProjectManager {
 
         this.serializer = new ProjectSerializer();
 
+        const now = new Date().toISOString();
         this.projectInfo = {
-            name: 'Neues Projekt',
-            createdAt: new Date().toISOString(),
-            modifiedAt: new Date().toISOString()
+            id:         _generateProjectId(),
+            name:       'Neues Projekt',
+            createdAt:  now,
+            updatedAt:  now,
+            modifiedAt: now,
         };
     }
 
@@ -28,10 +38,15 @@ export class ProjectManager {
         this.groupManager?.clear();
         this.componentLibrary?.clear();
 
+        const trimmed = (typeof name === 'string') ? name.trim() : '';
+        const now = new Date().toISOString();
+
         this.projectInfo = {
-            name,
-            createdAt: new Date().toISOString(),
-            modifiedAt: new Date().toISOString()
+            id:         _generateProjectId(),
+            name:       trimmed || 'Neues Projekt',
+            createdAt:  now,
+            updatedAt:  now,
+            modifiedAt: now,
         };
 
         return this.projectInfo;

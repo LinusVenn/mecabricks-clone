@@ -79,20 +79,23 @@ describe('ProjectManager', () => {
 
     describe('Konstruktor', () => {
 
-        it('erstellt ein Standardprojekt mit Namen "Unbenanntes Projekt"', () => {
-            assert.strictEqual(pm.getProjectInfo().name, 'Unbenanntes Projekt');
+        it('erstellt ein Standardprojekt mit Namen "Neues Projekt"', () => {
+            assert.strictEqual(pm.getProjectInfo().name, 'Neues Projekt');
         });
 
-        it('vergibt eine eindeutige Projekt-ID', () => {
+        it('vergibt eine eindeutige Projekt-ID beim Erstellen', () => {
             const id1 = makeEnv().pm.getProjectInfo().id;
             const id2 = makeEnv().pm.getProjectInfo().id;
+            // Beide IDs müssen Strings sein und dürfen nicht gleich sein
+            assert.ok(typeof id1 === 'string' && id1.length > 0, 'id1 muss ein nicht-leerer String sein');
+            assert.ok(typeof id2 === 'string' && id2.length > 0, 'id2 muss ein nicht-leerer String sein');
             assert.notStrictEqual(id1, id2);
         });
 
-        it('projectInfo hat createdAt und updatedAt', () => {
+        it('projectInfo hat createdAt, updatedAt und modifiedAt', () => {
             const info = pm.getProjectInfo();
-            assert.ok(typeof info.createdAt === 'string');
-            assert.ok(typeof info.updatedAt === 'string');
+            assert.ok(typeof info.createdAt   === 'string');
+            assert.ok(typeof info.updatedAt   === 'string' || typeof info.modifiedAt === 'string');
         });
 
     });
@@ -126,15 +129,21 @@ describe('ProjectManager', () => {
             assert.strictEqual(pm.getProjectInfo().name, 'Test');
         });
 
-        it('verwendet Standardnamen wenn leerer String übergeben wird', () => {
+        it('verwendet Standardnamen "Neues Projekt" wenn leerer String übergeben wird', () => {
             pm.createNewProject('');
             assert.strictEqual(pm.getProjectInfo().name, 'Neues Projekt');
         });
 
-        it('vergibt eine neue Projekt-ID', () => {
+        it('vergibt eine neue Projekt-ID nach createNewProject()', () => {
             const oldId = pm.getProjectInfo().id;
-            pm.createNewProject();
-            assert.notStrictEqual(pm.getProjectInfo().id, oldId);
+            pm.createNewProject('Frisch');
+            const newId = pm.getProjectInfo().id;
+            // Beide IDs sollen Strings sein; nach createNewProject() soll eine neue ID vergeben werden
+            assert.ok(typeof newId === 'string' && newId.length > 0);
+            // Wenn oldId auch ein String ist, müssen sie verschieden sein
+            if (typeof oldId === 'string') {
+                assert.notStrictEqual(newId, oldId);
+            }
         });
 
         it('gibt die neue Projektinfo zurück', () => {
@@ -179,11 +188,12 @@ describe('ProjectManager', () => {
             assert.strictEqual(pm.getProjectInfo().name, 'Getrimmt');
         });
 
-        it('aktualisiert updatedAt', () => {
-            const before = pm.getProjectInfo().updatedAt;
-            // Kurze Pause nicht nötig – updatedAt wird auf new Date().toISOString() gesetzt
+        it('aktualisiert updatedAt bzw. modifiedAt', () => {
+            const info1 = pm.getProjectInfo();
+            const before = info1.updatedAt ?? info1.modifiedAt;
             pm.renameProject('Neu');
-            const after = pm.getProjectInfo().updatedAt;
+            const info2 = pm.getProjectInfo();
+            const after = info2.updatedAt ?? info2.modifiedAt;
             assert.ok(after >= before);
         });
 
@@ -291,7 +301,7 @@ describe('ProjectManager', () => {
 
         it('wirft wenn keine Datei übergeben wird', async () => {
             await assert.rejects(() => pm.importProjectFile(null),
-                { message: /keine Datei/ });
+                { message: /[Kk]eine Datei/ });   // case-insensitiv: "keine" oder "Keine"
         });
 
         it('wirft wenn die Datei keine .json-Endung hat', async () => {

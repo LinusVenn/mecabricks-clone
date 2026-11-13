@@ -57,9 +57,9 @@ describe('ProjectSerializer', () => {
             assert.strictEqual(data.format, 'mecabricks-clone');
         });
 
-        it('gibt Objekt mit version 1 zurück', () => {
+        it('gibt Objekt mit version 2 oder höher zurück (Phase-6-Upgrade)', () => {
             const data = serializer.createProject(library, connectionManager, baseInfo);
-            assert.strictEqual(data.version, 1);
+            assert.ok(data.version >= 2, `version soll >= 2 sein, war: ${data.version}`);
         });
 
         it('übernimmt den Projektnamen aus projectInfo', () => {
@@ -262,6 +262,81 @@ describe('ProjectSerializer', () => {
             assert.throws(() => serializer.deserialize(bad, library, connectionManager));
         });
 
+    });
+
+
+    // ── Phase-6-Erweiterungen: Gruppen ────────────────────────────────────────
+
+    describe('Phase 6 – Gruppen in createProject()', () => {
+
+        it('enthält groups-Array wenn kein groupManager übergeben wird', () => {
+            const data = serializer.createProject(library, connectionManager, baseInfo);
+            assert.ok(Array.isArray(data.groups));
+        });
+
+        it('groups ist leer wenn kein groupManager übergeben wird', () => {
+            const data = serializer.createProject(library, connectionManager, baseInfo);
+            assert.deepStrictEqual(data.groups, []);
+        });
+
+        it('groups ist leer wenn groupManager null ist', () => {
+            const data = serializer.createProject(library, connectionManager, baseInfo, null);
+            assert.deepStrictEqual(data.groups, []);
+        });
+
+        it('groups enthält Daten aus groupManager.toData()', () => {
+            const groupData = [{ id: 'g1', name: 'Haus', brickIds: ['b1', 'b2'] }];
+            const gm = { toData: () => groupData };
+            const data = serializer.createProject(library, connectionManager, baseInfo, gm);
+            assert.deepStrictEqual(data.groups, groupData);
+        });
+
+        it('version ist >= 2 (Phase-6-Projektformat)', () => {
+            const data = serializer.createProject(library, connectionManager, baseInfo);
+            assert.ok(data.version >= 2, `version soll >= 2 sein, war: ${data.version}`);
+        });
+    });
+
+
+    describe('Phase 6 – Gruppen in deserialize()', () => {
+
+        it('ruft groupManager.loadFromData() bei Deserialisierung auf', () => {
+            let loadedData = null;
+            const gm = {
+                clear:        () => {},
+                loadFromData: (data) => { loadedData = data; },
+            };
+            // Gruppe muss auf existierende Brick-ID verweisen (Validator-Check)
+            const bricks = [{
+                id: 'b1', type: 'brick_2x4', color: 0xff0000,
+                position: { x: 0, y: 0, z: 0 }, rotation: { x: 0, y: 0, z: 0 }
+            }];
+            const groups = [{ id: 'g1', name: 'G', brickIds: ['b1'] }];
+            const data = { ...minimalValidData(bricks), version: 2, groups };
+            serializer.deserialize(data, library, connectionManager, gm);
+            assert.deepStrictEqual(loadedData, groups);
+        });
+
+        it('ruft groupManager.clear() bei Deserialisierung auf', () => {
+            let cleared = false;
+            const gm = {
+                clear:        () => { cleared = true; },
+                loadFromData: () => {},
+            };
+            const data = { ...minimalValidData(), version: 2, groups: [] };
+            serializer.deserialize(data, library, connectionManager, gm);
+            assert.strictEqual(cleared, true);
+        });
+
+        it('kein Crash wenn kein groupManager übergeben wird', () => {
+            const data = { ...minimalValidData(), version: 2, groups: [] };
+            assert.doesNotThrow(() => serializer.deserialize(data, library, connectionManager));
+        });
+
+        it('lädt version-1-Projekte ohne groups-Feld weiterhin korrekt', () => {
+            const data = minimalValidData();   // version: 1, kein groups-Feld
+            assert.doesNotThrow(() => serializer.deserialize(data, library, connectionManager));
+        });
     });
 
 });

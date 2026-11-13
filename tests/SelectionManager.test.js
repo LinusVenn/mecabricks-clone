@@ -85,20 +85,20 @@ describe('SelectionManager', () => {
         it('ruft clearSelection auf wenn kein Treffer', () => {
             const cb = mock.fn();
             manager.onSelectionChanged = cb;
-            // Raycaster wird keine Treffer liefern (leere Szene)
-            manager.handleClick({ clientX: 400, clientY: 300 });
+            // button: 0 ist Linksklick (Phase-6-Check)
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300 });
             assert.strictEqual(manager.selectedObject, null);
             assert.strictEqual(cb.mock.callCount(), 1);
             assert.strictEqual(cb.mock.calls[0].arguments[0], null);
         });
 
         it('berechnet NDC-x = 0 bei Klick auf Mitte', () => {
-            manager.handleClick({ clientX: 400, clientY: 300 });
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300 });
             assert.ok(Math.abs(manager.mouse.x - 0) < 0.01);
         });
 
         it('berechnet NDC-y = 0 bei Klick auf Mitte', () => {
-            manager.handleClick({ clientX: 400, clientY: 300 });
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300 });
             assert.ok(Math.abs(manager.mouse.y - 0) < 0.01);
         });
 
@@ -117,10 +117,124 @@ describe('SelectionManager', () => {
 
             const cb = mock.fn();
             manager.onSelectionChanged = cb;
-            manager.handleClick({ clientX: 400, clientY: 300 });
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300 });
 
             assert.strictEqual(manager.selectedObject, group);
             assert.strictEqual(cb.mock.calls[0].arguments[0], group);
+        });
+
+        it('button !== 0 wird ignoriert', () => {
+            const cb = mock.fn();
+            manager.onSelectionChanged = cb;
+            manager.handleClick({ button: 2, clientX: 400, clientY: 300 });
+            assert.strictEqual(cb.mock.callCount(), 0);
+        });
+
+    });
+
+
+    // ── Phase-6-Erweiterungen ─────────────────────────────────────────────────
+
+    describe('Phase 6 – onCtrlClick / onEmptyClick', () => {
+
+        it('onCtrlClick ist initial null', () => {
+            assert.strictEqual(manager.onCtrlClick, null);
+        });
+
+        it('onEmptyClick ist initial null', () => {
+            assert.strictEqual(manager.onEmptyClick, null);
+        });
+
+        it('Strg+Klick auf Stein ruft onCtrlClick mit brickId auf', () => {
+            // Raycaster-Stub der einen Stein trifft
+            const group = new THREE.Group();
+            group.userData.brickId = 'brick-ctrl';
+            const geo = new THREE.BoxGeometry(1, 1, 1);
+            const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial());
+            group.add(mesh);
+
+            manager.raycaster.intersectObjects = () => [{ object: mesh }];
+
+            let capturedId = null;
+            manager.onCtrlClick = (id) => { capturedId = id; };
+
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300, ctrlKey: true, metaKey: false });
+            assert.strictEqual(capturedId, 'brick-ctrl');
+        });
+
+        it('Strg+Klick auf Stein ruft NICHT selectObject auf', () => {
+            const group = new THREE.Group();
+            group.userData.brickId = 'brick-ctrl';
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+            group.add(mesh);
+
+            manager.raycaster.intersectObjects = () => [{ object: mesh }];
+            manager.onCtrlClick = () => {};
+
+            const cb = mock.fn();
+            manager.onSelectionChanged = cb;
+
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300, ctrlKey: true, metaKey: false });
+            assert.strictEqual(cb.mock.callCount(), 0);
+        });
+
+        it('Normaler Klick auf Stein ruft onEmptyClick auf (um MultiSelection zu löschen)', () => {
+            const group = new THREE.Group();
+            group.userData.brickId = 'brick-1';
+            const mesh = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+            group.add(mesh);
+
+            manager.raycaster.intersectObjects = () => [{ object: mesh }];
+
+            let emptyCalled = false;
+            manager.onEmptyClick = () => { emptyCalled = true; };
+
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300, ctrlKey: false, metaKey: false });
+            assert.strictEqual(emptyCalled, true);
+        });
+
+        it('Klick auf leere Stelle ruft onEmptyClick auf', () => {
+            manager.raycaster.intersectObjects = () => [];
+            let emptyCalled = false;
+            manager.onEmptyClick = () => { emptyCalled = true; };
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300, ctrlKey: false, metaKey: false });
+            assert.strictEqual(emptyCalled, true);
+        });
+
+        it('Strg+Klick auf leere Stelle ruft onEmptyClick NICHT auf', () => {
+            manager.raycaster.intersectObjects = () => [];
+            let emptyCalled = false;
+            manager.onEmptyClick = () => { emptyCalled = true; };
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300, ctrlKey: true, metaKey: false });
+            assert.strictEqual(emptyCalled, false);
+        });
+
+        it('Strg+Klick auf leere Stelle löscht Einzelauswahl nicht', () => {
+            // Setze vorab eine Einzelauswahl
+            const group = new THREE.Group();
+            group.userData.brickId = 'existing';
+            manager.selectedObject = group;
+
+            manager.raycaster.intersectObjects = () => [];
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300, ctrlKey: true, metaKey: false });
+
+            // selectedObject soll unverändert bleiben
+            assert.strictEqual(manager.selectedObject, group);
+        });
+
+        it('Highlight-Objekte (userData.isHighlight) werden beim Raycast ignoriert', () => {
+            // Mesh mit isHighlight-Flag soll nicht als Treffer gelten
+            const highlight = new THREE.Mesh(new THREE.BoxGeometry(1, 1, 1));
+            highlight.userData.isHighlight = true;
+
+            manager.raycaster.intersectObjects = () => [{ object: highlight }];
+
+            const cb = mock.fn();
+            manager.onSelectionChanged = cb;
+            manager.handleClick({ button: 0, clientX: 400, clientY: 300, ctrlKey: false, metaKey: false });
+
+            // Kein Stein gefunden → clearSelection → null
+            assert.strictEqual(cb.mock.calls[0].arguments[0], null);
         });
 
     });

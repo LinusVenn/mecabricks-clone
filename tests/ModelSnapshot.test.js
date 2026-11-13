@@ -194,4 +194,108 @@ describe('ModelSnapshot', () => {
 
     });
 
+
+    // ── Phase-6-Erweiterungen: Gruppen ────────────────────────────────────────
+
+    describe('capture() mit groupManager (Phase 6)', () => {
+
+        it('enthält groups-Array wenn groupManager übergeben wird', () => {
+            const gm = { toData: () => [{ id: 'g1', name: 'G', brickIds: [] }] };
+            const snap = ModelSnapshot.capture(library, connectionManager, gm);
+            assert.ok(Array.isArray(snap.groups));
+            assert.strictEqual(snap.groups.length, 1);
+        });
+
+        it('groups ist leeres Array wenn kein groupManager übergeben wird', () => {
+            const snap = ModelSnapshot.capture(library, connectionManager);
+            assert.deepStrictEqual(snap.groups, []);
+        });
+
+        it('groups ist leeres Array wenn groupManager null ist', () => {
+            const snap = ModelSnapshot.capture(library, connectionManager, null);
+            assert.deepStrictEqual(snap.groups, []);
+        });
+
+        it('groups enthält korrekten Inhalt aus groupManager.toData()', () => {
+            const expected = [
+                { id: 'g1', name: 'Haus',  brickIds: ['brick-1', 'brick-2'] },
+                { id: 'g2', name: 'Dach',  brickIds: ['brick-3'] },
+            ];
+            const gm = { toData: () => expected };
+            const snap = ModelSnapshot.capture(library, connectionManager, gm);
+            assert.deepStrictEqual(snap.groups, expected);
+        });
+
+        it('groups-Feld ist unabhängig von bricks und connections', () => {
+            library.addBrick(0, 0, 0, 0xff0000);
+            const gm = { toData: () => [{ id: 'g1', name: 'G', brickIds: [] }] };
+            const snap = ModelSnapshot.capture(library, connectionManager, gm);
+            assert.strictEqual(snap.bricks.length, 1);
+            assert.strictEqual(snap.groups.length, 1);
+        });
+    });
+
+
+    describe('restore() mit groupManager (Phase 6)', () => {
+
+        it('ruft groupManager.clear() vor der Wiederherstellung auf', () => {
+            let cleared = false;
+            const gm = {
+                clear:        () => { cleared = true; },
+                loadFromData: () => {},
+            };
+            const snap = { bricks: [], connections: [], groups: [] };
+            ModelSnapshot.restore(snap, library, connectionManager, gm);
+            assert.strictEqual(cleared, true);
+        });
+
+        it('ruft groupManager.loadFromData() mit den groups-Daten auf', () => {
+            let receivedData = null;
+            const gm = {
+                clear:        () => {},
+                loadFromData: (data) => { receivedData = data; },
+            };
+            const groups = [{ id: 'g1', name: 'G', brickIds: [] }];
+            const snap = { bricks: [], connections: [], groups };
+            ModelSnapshot.restore(snap, library, connectionManager, gm);
+            assert.deepStrictEqual(receivedData, groups);
+        });
+
+        it('kein Crash wenn kein groupManager übergeben wird', () => {
+            const snap = { bricks: [], connections: [], groups: [{ id: 'g1', name: 'G', brickIds: [] }] };
+            assert.doesNotThrow(() => ModelSnapshot.restore(snap, library, connectionManager));
+        });
+
+        it('kein Crash wenn groupManager null ist', () => {
+            const snap = { bricks: [], connections: [], groups: [] };
+            assert.doesNotThrow(() => ModelSnapshot.restore(snap, library, connectionManager, null));
+        });
+
+        it('kein Crash wenn snap.groups fehlt', () => {
+            let loadCalled = false;
+            const gm = { clear: () => {}, loadFromData: () => { loadCalled = true; } };
+            const snap = { bricks: [], connections: [] };  // kein groups-Feld
+            assert.doesNotThrow(() => ModelSnapshot.restore(snap, library, connectionManager, gm));
+            assert.strictEqual(loadCalled, false);
+        });
+
+        it('Roundtrip capture→restore stellt Gruppen wieder her', () => {
+            library.addBrick(0, 0, 0, 0xff0000);
+            const brick = library.getAll()[0];
+            const groups = [{ id: 'g1', name: 'Haus', brickIds: [brick.id] }];
+
+            let loadedData = null;
+            const gm = {
+                toData:       () => groups,
+                clear:        () => {},
+                loadFromData: (data) => { loadedData = data; },
+            };
+
+            const snap = ModelSnapshot.capture(library, connectionManager, gm);
+            ModelSnapshot.restore(snap, library, connectionManager, gm);
+
+            assert.deepStrictEqual(loadedData, groups);
+        });
+    });
+
 });
