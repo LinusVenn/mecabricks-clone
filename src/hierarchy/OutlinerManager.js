@@ -4,25 +4,33 @@ import { ObjectVisibilityManager } from './ObjectVisibilityManager.js';
 
 export class OutlinerManager {
 
-    constructor(scene, options = {}) {
-        this.scene = scene;
+    
+constructor(scene, options = {}) {
+    this.scene = scene;
 
-        this.library = options.library ?? null;
-        this.groupManager = options.groupManager ?? null;
-        this.connectionManager = options.connectionManager ?? null;
+    this.library = options.library ?? null;
+    this.groupManager = options.groupManager ?? null;
+    this.connectionManager = options.connectionManager ?? null;
 
-        this.hierarchyManager = new HierarchyManager(scene);
-        this.visibilityManager = new ObjectVisibilityManager(scene);
+    this.hierarchyManager = new HierarchyManager(scene);
 
-        this.selectedObjects = [];
-        this.listeners = new Set();
+    // Gemeinsame Instanz für Outliner und IsolationManager.
+    this.visibilityManager =
+        options.visibilityManager ??
+        new ObjectVisibilityManager(scene);
 
-        this.onSelectionChange = options.onSelectionChange ?? null;
-        this.onDeleteSelection = options.onDeleteSelection ?? null;
-        this.onChange = options.onChange ?? null;
+    this.ownsVisibilityManager = !options.visibilityManager;
 
-        this.isDisposed = false;
-    }
+    this.selectedObjects = [];
+    this.listeners = new Set();
+
+    this.onSelectionChange = options.onSelectionChange ?? null;
+    this.onDeleteSelection = options.onDeleteSelection ?? null;
+    this.onChange = options.onChange ?? null;
+
+    this.isDisposed = false;
+}
+
 
     // --------------------------------------------------
     // Listener
@@ -313,50 +321,58 @@ export class OutlinerManager {
     // Gruppenmitgliedschaft
     // --------------------------------------------------
 
-    moveObjectToGroup(object, targetGroupId = null) {
-        if (!this.groupManager || !object) {
-            return false;
-        }
+    
+moveObjectToGroup(object, targetGroupId = null) {
+    if (!this.groupManager || !object) return false;
 
-        const brickId = this.getBrickId(object);
+    const brickId = this.getBrickId(object);
 
-        if (!brickId) {
-            return false;
-        }
+    if (brickId === null || brickId === undefined) return false;
 
-        const currentGroup = this.groupManager.getGroupByBrickId(
+    const currentGroup = this.groupManager.getGroupByBrickId(brickId);
+
+    if (currentGroup?.id === targetGroupId) return false;
+
+    // Zielgruppe zuerst validieren.
+    if (targetGroupId && !this.groupManager.getGroup(targetGroupId)) {
+        return false;
+    }
+
+    // Erst nach erfolgreicher Validierung die alte Gruppe ändern.
+    if (currentGroup) {
+        this.groupManager.removeBrickFromGroup(
+            currentGroup.id,
+            brickId
+        );
+    }
+
+    if (targetGroupId) {
+        const success = this.groupManager.addBrickToGroup(
+            targetGroupId,
             brickId
         );
 
-        if (currentGroup?.id === targetGroupId) {
+        if (!success) {
+            // Rollback, falls das Hinzufügen unerwartet fehlschlägt.
+            if (currentGroup) {
+                this.groupManager.addBrickToGroup(
+                    currentGroup.id,
+                    brickId
+                );
+            }
+
             return false;
         }
-
-        if (currentGroup) {
-            this.groupManager.removeBrickFromGroup(
-                currentGroup.id,
-                brickId
-            );
-        }
-
-        if (targetGroupId) {
-            const success = this.groupManager.addBrickToGroup(
-                targetGroupId,
-                brickId
-            );
-
-            if (!success) {
-                return false;
-            }
-        }
-
-        this.notify('group-membership', {
-            object,
-            targetGroupId
-        });
-
-        return true;
     }
+
+    this.notify('group-membership', {
+        object,
+        targetGroupId
+    });
+
+    return true;
+}
+
 
     moveObject(object, target) {
         if (!object || !target) return false;
@@ -551,14 +567,18 @@ export class OutlinerManager {
     // Aufräumen
     // --------------------------------------------------
 
+    
     dispose() {
         if (this.isDisposed) return;
 
         this.listeners.clear();
         this.selectedObjects = [];
 
-        this.visibilityManager.dispose();
+        if (this.ownsVisibilityManager) {
+            this.visibilityManager.dispose();
+        }
 
         this.isDisposed = true;
     }
+
 }

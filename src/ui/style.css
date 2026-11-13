@@ -88,6 +88,12 @@ html, body {
   border-bottom-color: #aaa;
 }
 
+#autosave-project-name:focus-visible {
+  outline: 2px solid #4a90d9;
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
 #autosave-indicator {
   font-size: 11px;
   padding: 2px 7px;
@@ -858,5 +864,12 @@ button.active {
     border: none;
     border-top: 1px solid #444;
     margin: 10px 0;
+}
+
+
+#autosave-project-name:focus-visible {
+  outline: 2px solid #4a90d9;
+  outline-offset: 3px;
+  border-radius: 2px;
 }
 

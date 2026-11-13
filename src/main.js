@@ -35,6 +35,29 @@ import { AdvancedSelectionManager } from './selection/AdvancedSelectionManager.j
 import { IsolationManager } from './selection/IsolationManager.js';
 import { SelectionPanel } from './ui/SelectionPanel.js';
 
+// Phase 8.5: Präzisionswerkzeuge
+import { PrecisionPanel } from './ui/PrecisionPanel.js';
+
+// Phase 8.6: Baugruppenbibliothek
+import { initializeComponentLibraryPhase86 }
+    from './component-library/initializeComponentLibraryPhase86.js';
+
+// Phase 8.7: Modellprüfung
+import { initializeModelValidationPhase87 }
+    from './validation/initializeModelValidationPhase87.js';
+
+// Phase 8.8: Performanceoptimierung
+import { initializePerformancePhase88 }
+    from './performance/initializePerformancePhase88.js';
+
+// Phase 8.9: Gesamtintegration
+import { EditorPanelManager }    from './ui/EditorPanelManager.js';
+import { EditorShortcutManager } from './ui/EditorShortcutManager.js';
+import { EditorErrorHandler }    from './core/EditorErrorHandler.js';
+
+// Phase 9: Benutzerkonten und Cloud-Speicherung
+import { initializeCloudPhase9 } from './cloud/initializeCloudPhase9.js';
+
 
 // ======================================================
 // 1. DOM-CONTAINER
@@ -102,6 +125,14 @@ editor.placementManager.editor = editor;
 if (!editor.transformInputManager || !editor.transformGizmo) {
     throw new Error(
         'Die Phase-8.2-Transformationskomponenten wurden nicht vollständig initialisiert.'
+    );
+}
+
+// Phase 8.5: PrecisionManager prüfen
+if (!editor.precisionManager) {
+    throw new Error(
+        'Der PrecisionManager wurde im Editor nicht initialisiert. ' +
+        'Bitte überprüfe die Integration in Editor.js.'
     );
 }
 
@@ -295,6 +326,23 @@ transformPanel.update();
 
 
 // ======================================================
+// 11.1 PRÄZISIONSPANEL – PHASE 8.5
+// ======================================================
+
+const precisionPanelContainer = createPanelContainer(
+    'precision-panel-container',
+    'Präzisionswerkzeuge'
+);
+
+const precisionPanel = new PrecisionPanel(
+    precisionPanelContainer,
+    editor.precisionManager
+);
+
+precisionPanel.update();
+
+
+// ======================================================
 // 12. HISTORY – UNDO UND REDO
 // ======================================================
 
@@ -316,6 +364,10 @@ const historyManager = new HistoryManager(
         outlinerManager.refresh();
 
         transformPanel.update();
+
+        // Phase 8.5: Präzisionspanel nach Undo/Redo aktualisieren.
+        precisionPanel.update();
+
         updateAssemblyPanel();
 
         // Phase 8.4: Filteroptionen nach Wiederherstellung aktualisieren.
@@ -341,6 +393,30 @@ assemblyManager.historyManager = historyManager;
 componentManager.historyManager = historyManager;
 
 historyManager.initialize();
+
+const componentLibraryPhase86 =
+    await initializeComponentLibraryPhase86({
+        sidebar,
+        library,
+        connectionManager: editor.connectionManager,
+        groupManager,
+        assemblyManager,
+        historyManager,
+        editor,
+        onInsert: () => {
+            outlinerManager.refresh();
+            transformPanel.update();
+            selectionPanel.updateOptions();
+            selectionPanel.updateStatus();
+            autoSaveManager.scheduleSave();
+        }
+    });
+
+window.componentTemplateManager =
+    componentLibraryPhase86.templateManager;
+
+window.componentTemplatePanel =
+    componentLibraryPhase86.panel;
 
 historyManager.onHistoryChange = (canUndo, canRedo) => {
     projectToolbar.updateUndoRedo(canUndo, canRedo);
@@ -575,6 +651,7 @@ createButton(
             updateAssemblyPanel();
             outlinerManager.refresh();
             transformPanel.update();
+            precisionPanel.update();
 
         } catch (error) {
             console.error(
@@ -739,8 +816,9 @@ const selectionFilter = new SelectionFilter(
 
 const advancedSelectionManager = new AdvancedSelectionManager({
     library,
-    groupManager,
+    groupManager: editor.groupManager,
     multiSelectionManager: editor.multiSelectionManager,
+    selectionManager: editor.selectionManager,
     selectionFilter
 });
 
@@ -751,7 +829,8 @@ const advancedSelectionManager = new AdvancedSelectionManager({
 
 const isolationManager = new IsolationManager(
     sceneManager.scene,
-    library
+    library,
+    outlinerManager.visibilityManager
 );
 
 
@@ -772,6 +851,30 @@ const selectionPanel = new SelectionPanel(
     selectionFilter,
     isolationManager
 );
+
+const previousMultiSelectionCallback =
+    editor.multiSelectionManager.onSelectionChanged;
+
+editor.multiSelectionManager.onSelectionChanged = ids => {
+    previousMultiSelectionCallback?.(ids);
+
+    selectionPanel.updateStatus();
+
+    // Phase 8.5: Auswahländerung im Präzisionspanel anzeigen.
+    precisionPanel.update();
+};
+
+const previousSingleSelectionCallback =
+    editor.selectionManager.onSelectionChanged;
+
+editor.selectionManager.onSelectionChanged = object => {
+    previousSingleSelectionCallback?.(object);
+
+    selectionPanel.updateStatus();
+
+    // Phase 8.5: Auswahländerung im Präzisionspanel anzeigen.
+    precisionPanel.update();
+};
 
 
 // ======================================================
@@ -810,6 +913,8 @@ outlinerManager.onSelectionChange = objects => {
 
             transformPanel.update();
             selectionPanel.updateStatus();
+            precisionPanel.update();
+
             return;
         }
 
@@ -819,6 +924,8 @@ outlinerManager.onSelectionChange = objects => {
 
             transformPanel.update();
             selectionPanel.updateStatus();
+            precisionPanel.update();
+
             return;
         }
 
@@ -827,6 +934,7 @@ outlinerManager.onSelectionChange = objects => {
 
         transformPanel.update();
         selectionPanel.updateStatus();
+        precisionPanel.update();
 
     } finally {
         syncingSelection = false;
@@ -869,6 +977,7 @@ selectionManager.onSelectionChanged = object => {
 
         transformPanel.update();
         selectionPanel.updateStatus();
+        precisionPanel.update();
 
     } finally {
         syncingSelection = false;
@@ -911,6 +1020,7 @@ multiSelectionManager.onSelectionChanged = ids => {
 
         transformPanel.update();
         selectionPanel.updateStatus();
+        precisionPanel.update();
 
     } finally {
         syncingSelection = false;
@@ -919,7 +1029,42 @@ multiSelectionManager.onSelectionChanged = ids => {
 
 
 // ======================================================
-// 16. MATERIAL-PANEL MIT AUSWAHL VERBINDEN
+// 16. PHASE 8.7 – MODELLPRÜFUNG
+// ======================================================
+
+const modelValidationPhase87 =
+    initializeModelValidationPhase87({
+
+        sidebar,
+
+        library,
+
+        connectionManager:
+            editor.connectionManager,
+
+        collisionManager:
+            editor.collisionManager,
+
+        groupManager,
+
+        materialLibrary,
+
+        componentLibrary,
+
+        editor,
+
+        outlinerManager
+    });
+
+const modelValidator =
+    modelValidationPhase87.modelValidator;
+
+const validationPanel =
+    modelValidationPhase87.panel;
+
+
+// ======================================================
+// 17. MATERIAL-PANEL MIT AUSWAHL VERBINDEN
 // ======================================================
 
 function setMaterialPanelTarget(selectedObject) {
@@ -930,7 +1075,7 @@ window.setMaterialPanelTarget = setMaterialPanelTarget;
 
 
 // ======================================================
-// 17. OUTLINER-LÖSCHEN MIT EDITOR VERBINDEN
+// 18. OUTLINER-LÖSCHEN MIT EDITOR VERBINDEN
 // ======================================================
 
 outlinerManager.onDeleteSelection = () => {
@@ -940,11 +1085,12 @@ outlinerManager.onDeleteSelection = () => {
     updateAssemblyPanel();
     selectionPanel.updateOptions();
     selectionPanel.updateStatus();
+    precisionPanel.update();
 };
 
 
 // ======================================================
-// 18. GROUP-TOOLBAR MIT EDITOR VERBINDEN
+// 19. GROUP-TOOLBAR MIT EDITOR VERBINDEN
 // ======================================================
 
 groupToolbar.onGroup = () => {
@@ -953,6 +1099,7 @@ groupToolbar.onGroup = () => {
     updateAssemblyPanel();
     outlinerManager.refresh();
     selectionPanel.updateOptions();
+    precisionPanel.update();
 };
 
 groupToolbar.onUngroup = () => {
@@ -961,6 +1108,7 @@ groupToolbar.onUngroup = () => {
     updateAssemblyPanel();
     outlinerManager.refresh();
     selectionPanel.updateOptions();
+    precisionPanel.update();
 };
 
 groupToolbar.onCopy = () => {
@@ -973,6 +1121,7 @@ groupToolbar.onDuplicate = () => {
     updateAssemblyPanel();
     outlinerManager.refresh();
     selectionPanel.updateOptions();
+    precisionPanel.update();
 };
 
 groupToolbar.onDelete = () => {
@@ -981,6 +1130,7 @@ groupToolbar.onDelete = () => {
     updateAssemblyPanel();
     outlinerManager.refresh();
     selectionPanel.updateOptions();
+    precisionPanel.update();
 };
 
 groupToolbar.onPaste = () => {
@@ -989,6 +1139,7 @@ groupToolbar.onPaste = () => {
     updateAssemblyPanel();
     outlinerManager.refresh();
     selectionPanel.updateOptions();
+    precisionPanel.update();
 };
 
 editor.onGroupUIUpdate = (count, groupName) => {
@@ -1000,7 +1151,7 @@ editor.onGroupUIUpdate = (count, groupName) => {
 
 
 // ------------------------------------------------------
-// 18.1 Gruppeninformationen aktualisieren
+// 19.1 Gruppeninformationen aktualisieren
 // ------------------------------------------------------
 
 function updateGroupToolbar() {
@@ -1028,12 +1179,13 @@ function updateGroupToolbar() {
 
 
 // ------------------------------------------------------
-// 18.2 Outliner-Ereignisse
+// 19.2 Outliner-Ereignisse
 // ------------------------------------------------------
 
 outlinerManager.subscribe(event => {
     if (event.type === 'selection') {
         updateGroupToolbar();
+        precisionPanel.update();
     }
 
     if (
@@ -1043,12 +1195,13 @@ outlinerManager.subscribe(event => {
         historyManager.saveState();
         updateAssemblyPanel();
         selectionPanel.updateOptions();
+        precisionPanel.update();
     }
 });
 
 
 // ======================================================
-// 19. PROJEKT-TOOLBAR VERBINDEN
+// 20. PROJEKT-TOOLBAR VERBINDEN
 // ======================================================
 
 projectToolbar.onSave = () => {
@@ -1093,7 +1246,7 @@ autoSaveManager.onStatusChange = (
 
 
 // ======================================================
-// 20. PART-LIBRARY-UI
+// 21. PART-LIBRARY-UI
 // ======================================================
 
 const partLibraryContainer = document.getElementById(
@@ -1134,7 +1287,7 @@ const partLibraryUI = new PartLibraryUI(
 
 
 // ======================================================
-// 21. SCHATTEN
+// 22. SCHATTEN
 // ======================================================
 
 function updateSceneShadows() {
@@ -1149,7 +1302,7 @@ function updateSceneShadows() {
 
 
 // ======================================================
-// 22. EDITOR-AUSWAHL ZURÜCKSETZEN
+// 23. EDITOR-AUSWAHL ZURÜCKSETZEN
 // ======================================================
 
 function clearEditorSelection() {
@@ -1173,11 +1326,14 @@ function clearEditorSelection() {
     selectionFilter.updateOptions?.();
     selectionPanel.updateOptions();
     selectionPanel.updateStatus();
+
+    // Phase 8.5: Präzisionspanel nach dem Zurücksetzen aktualisieren.
+    precisionPanel.update();
 }
 
 
 // ======================================================
-// 23. PROJEKT LADEN
+// 24. PROJEKT LADEN
 // ======================================================
 
 async function loadInitialProject() {
@@ -1214,6 +1370,9 @@ async function loadInitialProject() {
         selectionPanel.updateOptions();
         selectionPanel.updateStatus();
 
+        // Phase 8.5: Nach dem Projektladen aktualisieren.
+        precisionPanel.update();
+
     } catch (error) {
         console.error(
             'Fehler beim Laden des gespeicherten Projekts:',
@@ -1222,6 +1381,8 @@ async function loadInitialProject() {
 
         historyManager.initialize();
 
+        precisionPanel.update();
+
     } finally {
         autoSaveManager.setRestoring(false);
     }
@@ -1229,7 +1390,7 @@ async function loadInitialProject() {
 
 
 // ======================================================
-// 24. PROJEKT EXPORTIEREN
+// 25. PROJEKT EXPORTIEREN
 // ======================================================
 
 function exportProject() {
@@ -1238,7 +1399,7 @@ function exportProject() {
 
 
 // ======================================================
-// 25. NEUES PROJEKT
+// 26. NEUES PROJEKT
 // ======================================================
 
 function createNewProject() {
@@ -1272,6 +1433,9 @@ function createNewProject() {
         selectionPanel.updateOptions();
         selectionPanel.updateStatus();
 
+        // Phase 8.5: Nach dem Erstellen eines Projekts aktualisieren.
+        precisionPanel.update();
+
         console.log('Neues Projekt erstellt.');
 
         return true;
@@ -1284,7 +1448,7 @@ function createNewProject() {
 
 
 // ======================================================
-// 26. PROJEKT UMBENENNEN
+// 27. PROJEKT UMBENENNEN
 // ======================================================
 
 function renameProject(newName) {
@@ -1308,47 +1472,44 @@ function renameProject(newName) {
 
 
 // ======================================================
-// 27. PROJEKT IMPORTIEREN
+// 28. PROJEKT IMPORTIEREN
 // ======================================================
 
 async function importProjectFile(file) {
-    if (!file) return false;
+    if (!file) return;
 
     autoSaveManager.setRestoring(true);
 
     try {
         await projectManager.importProjectFile(file);
 
-        clearEditorSelection();
+        // Erst nach erfolgreichem Import den Editor aktualisieren.
+        editor.selectionManager?.clearSelection?.();
 
         historyManager.initialize();
 
-        updateSceneShadows();
+        editor.updateShadows?.();
 
-        outlinerManager.refresh();
+        projectToolbar.updateProjectName(
+            projectManager.getProjectInfo().name
+        );
+
+        outlinerManager?.refresh?.();
         updateAssemblyPanel();
 
         selectionFilter.updateOptions?.();
         selectionPanel.updateOptions();
         selectionPanel.updateStatus();
 
-        projectToolbar.updateProjectName(
-            projectManager.getProjectInfo().name
-        );
-
-        console.log('Projekt erfolgreich importiert.');
-
-        return true;
+        // Phase 8.5: Nach dem Import aktualisieren.
+        precisionPanel.update();
 
     } catch (error) {
-        console.error(
-            'Fehler beim Importieren:',
-            error
+        console.error('Projektimport fehlgeschlagen:', error);
+
+        alert(
+            `Das Projekt konnte nicht importiert werden:\n${error.message}`
         );
-
-        window.alert(error.message);
-
-        return false;
 
     } finally {
         autoSaveManager.setRestoring(false);
@@ -1358,7 +1519,7 @@ async function importProjectFile(file) {
 
 
 // ======================================================
-// 28. GESPEICHERTES PROJEKT LÖSCHEN
+// 29. GESPEICHERTES PROJEKT LÖSCHEN
 // ======================================================
 
 function deleteSavedProject() {
@@ -1377,7 +1538,7 @@ function deleteSavedProject() {
 
 
 // ======================================================
-// 29. TASTATURKÜRZEL
+// 30. TASTATURKÜRZEL
 // ======================================================
 
 window.addEventListener('keydown', event => {
@@ -1428,6 +1589,7 @@ window.addEventListener('keydown', event => {
         updateAssemblyPanel();
         outlinerManager.refresh();
         selectionPanel.updateOptions();
+        precisionPanel.update();
 
         return;
     }
@@ -1439,6 +1601,7 @@ window.addEventListener('keydown', event => {
         updateAssemblyPanel();
         outlinerManager.refresh();
         selectionPanel.updateOptions();
+        precisionPanel.update();
 
         return;
     }
@@ -1452,6 +1615,7 @@ window.addEventListener('keydown', event => {
         updateAssemblyPanel();
         outlinerManager.refresh();
         selectionPanel.updateOptions();
+        precisionPanel.update();
 
         return;
     }
@@ -1460,6 +1624,7 @@ window.addEventListener('keydown', event => {
         if (isolationManager.isIsolating()) {
             isolationManager.exitIsolation();
             selectionPanel.updateStatus();
+            precisionPanel.update();
         }
 
         if (outlinerManager.isIsolating()) {
@@ -1470,7 +1635,7 @@ window.addEventListener('keydown', event => {
 
 
 // ======================================================
-// 30. BEFOREUNLOAD
+// 31. BEFOREUNLOAD
 // ======================================================
 
 window.addEventListener('beforeunload', () => {
@@ -1479,7 +1644,7 @@ window.addEventListener('beforeunload', () => {
 
 
 // ======================================================
-// 31. GLOBALE ZUGRIFFSPUNKTE
+// 32. GLOBALE ZUGRIFFSPUNKTE
 // ======================================================
 
 window.sceneManager = sceneManager;
@@ -1526,14 +1691,53 @@ window.advancedSelectionManager = advancedSelectionManager;
 window.isolationManager = isolationManager;
 window.selectionPanel = selectionPanel;
 
+// Phase 8.5
+window.precisionPanel = precisionPanel;
+window.precisionManager = editor.precisionManager;
+
+window.alignmentManager = editor.precisionManager.alignmentManager;
+window.distributionManager = editor.precisionManager.distributionManager;
+window.measurementManager = editor.precisionManager.measurementManager;
+window.mirrorManager = editor.precisionManager.mirrorManager;
+window.precisionSnapManager = editor.precisionManager.precisionSnapManager;
+
+// Phase 8.6
+window.componentLibraryPhase86 = componentLibraryPhase86;
+
 window.projectToolbar = projectToolbar;
 window.groupToolbar = groupToolbar;
 
 window.partLibraryUI = partLibraryUI;
 
+// Phase 8.7
+window.modelValidator = modelValidator;
+window.validationPanel = validationPanel;
+window.modelValidationPhase87 = modelValidationPhase87;
+
 
 // ======================================================
-// 32. ÖFFENTLICHE PROJEKTFUNKTIONEN
+// 16.1 PHASE 8.8 – PERFORMANCEOPTIMIERUNG
+// ======================================================
+// (bereits oben mit await initializePerformancePhase88 ausgeführt)
+
+const phase88 = await initializePerformancePhase88({
+    sidebar,
+    scene:    sceneManager.scene,
+    camera:   sceneManager.camera,
+    renderer: sceneManager.renderer,
+    library,
+    sceneManager,
+    shadowManager,
+    selectionManager:     editor.selectionManager,
+    multiSelectionManager: editor.multiSelectionManager,
+    connectionManager:    editor.connectionManager,
+    groupManager,
+    componentLibrary
+});
+
+
+// ======================================================
+// 33. ÖFFENTLICHE PROJEKTFUNKTIONEN
 // ======================================================
 
 window.exportProject = exportProject;
@@ -1544,7 +1748,199 @@ window.deleteSavedProject = deleteSavedProject;
 
 
 // ======================================================
-// 33. ÖFFENTLICHE PHASE-8.3-FUNKTIONEN
+// 36. PHASE 9 – BENUTZERKONTEN UND CLOUD-SPEICHERUNG
+// ======================================================
+
+const phase9 = await initializeCloudPhase9({
+    sidebar,
+    projectManager,
+    autoSaveManager,
+    historyManager,
+    editor,
+    panelManager:  window.panelManager  ?? null,
+    errorHandler:  window.errorHandler  ?? null,
+    onProjectLoaded: () => {
+        clearEditorSelection();
+        historyManager.initialize();
+        outlinerManager.refresh();
+        updateAssemblyPanel();
+        selectionFilter.updateOptions?.();
+        selectionPanel.updateOptions();
+        selectionPanel.updateStatus();
+        precisionPanel.update();
+        projectToolbar.updateProjectName(
+            projectManager.getProjectInfo().name
+        );
+    }
+});
+
+// Phase 9
+window.phase9              = phase9;
+window.authManager         = phase9.authManager;
+window.cloudProjectManager = phase9.cloudProjectManager;
+window.cloudSyncManager    = phase9.cloudSyncManager;
+window.syncStatusManager   = phase9.syncStatusManager;
+
+
+// ======================================================
+// 36. PHASE 8.9 – GESAMTINTEGRATION
+// ======================================================
+
+
+// --------------------------------------------------
+// 36.1 Zentraler Fehler-Handler
+// --------------------------------------------------
+
+const editorErrorHandler = new EditorErrorHandler({
+    onError: (entry) => {
+        console.warn(
+            `[EditorErrorHandler] ${entry.context}:`,
+            entry.message
+        );
+    }
+});
+
+
+// --------------------------------------------------
+// 36.2 Panel-Manager
+// --------------------------------------------------
+
+const panelManager = new EditorPanelManager();
+
+// Alle Phase-8-Panels registrieren
+editorErrorHandler.try(() => {
+    panelManager.register('outliner',     outlinerPanel,
+        { container: document.getElementById('outliner-panel-container') });
+
+    panelManager.register('transform',   transformPanel,
+        { container: document.getElementById('transform-panel-container') });
+
+    panelManager.register('precision',   precisionPanel,
+        { container: document.getElementById('precision-panel-container') });
+
+    panelManager.register('assembly',    assemblyPanel,
+        { container: document.getElementById('assembly-panel-container') });
+
+    panelManager.register('selection',   selectionPanel,
+        { container: document.getElementById('selection-container') });
+
+    panelManager.register('material',    materialPanel,
+        { container: document.getElementById('material-panel-container') });
+
+    panelManager.register('lighting',    lightingPanel,
+        { container: document.getElementById('lighting-panel-container') });
+
+    panelManager.register('render',      renderPanel,
+        { container: document.getElementById('render-panel-container') });
+
+    if (validationPanel) {
+        panelManager.register('validation', validationPanel);
+    }
+
+    if (phase88?.panel) {
+        panelManager.register('performance', phase88.panel);
+    }
+
+    if (window.componentTemplatePanel) {
+        panelManager.register('components', window.componentTemplatePanel);
+    }
+}, 'Phase 8.9 – Panel-Manager-Registrierung');
+
+
+// --------------------------------------------------
+// 36.3 Tastatursteuerung (neue Phase-8.9-Shortcuts)
+// --------------------------------------------------
+
+const shortcutManager = new EditorShortcutManager(window);
+
+// Kamera auf Auswahl fokussieren (F)
+shortcutManager.register({ key: 'f' }, () => {
+    const bricks = editor.multiSelectionManager
+        .getSelectedBricks(library);
+
+    const single = editor.selectionManager.selectedObject;
+
+    if (bricks.length > 0 || single) {
+        sceneManager.controls?.update?.();
+        // Fokus via OrbitControls (wenn vorhanden)
+        if (typeof sceneManager.controls?.target?.set === 'function') {
+            const targets = bricks.length > 0
+                ? bricks.map(b => b.group.position)
+                : [single.position];
+            const cx = targets.reduce((s, p) => s + p.x, 0) / targets.length;
+            const cy = targets.reduce((s, p) => s + p.y, 0) / targets.length;
+            const cz = targets.reduce((s, p) => s + p.z, 0) / targets.length;
+            sceneManager.controls.target.set(cx, cy, cz);
+            sceneManager.controls.update();
+        }
+    }
+});
+
+// Alle Bauteile auswählen (Ctrl + A)
+shortcutManager.register({ key: 'a', ctrl: true }, () => {
+    const all = library.getAll();
+    if (all.length === 0) return;
+
+    editor.multiSelectionManager.setSelection(all);
+    selectionPanel.updateStatus();
+    precisionPanel.update();
+});
+
+// Gruppe erstellen (Ctrl + G)
+shortcutManager.register({ key: 'g', ctrl: true }, () => {
+    editor.groupSelected();
+
+    updateAssemblyPanel();
+    outlinerManager.refresh();
+    selectionPanel.updateOptions();
+    precisionPanel.update();
+});
+
+// Gruppe auflösen (Ctrl + Shift + G)
+shortcutManager.register({ key: 'g', ctrl: true, shift: true }, () => {
+    editor.ungroupSelected();
+
+    updateAssemblyPanel();
+    outlinerManager.refresh();
+    selectionPanel.updateOptions();
+    precisionPanel.update();
+});
+
+// Verschieben-Modus (G)
+shortcutManager.register({ key: 'g' }, () => {
+    editor.transformManager.setMode('translate');
+    editor.groupTransformManager.setMode('translate');
+    transformPanel.update();
+});
+
+// Drehen-Modus (R)
+shortcutManager.register({ key: 'r' }, () => {
+    editor.transformManager.setMode('rotate');
+    editor.groupTransformManager.setMode('rotate');
+    transformPanel.update();
+});
+
+// Skalieren nicht nativ unterstützt; Hinweis im Konsolen-Log (S)
+shortcutManager.register({ key: 's' }, () => {
+    // Skalierung für Einzelbauteile ist in dieser Architektur
+    // nicht vorgesehen (Steine haben feste Maße). S aktiviert
+    // stattdessen den Rotationsmodus als sinnvollen Fallback.
+    editor.transformManager.setMode('rotate');
+    transformPanel.update();
+});
+
+
+// --------------------------------------------------
+// 36.4 Globale Zugriffspunkte (Phase 8.9)
+// --------------------------------------------------
+
+window.editorErrorHandler = editorErrorHandler;
+window.panelManager       = panelManager;
+window.shortcutManager    = shortcutManager;
+
+
+// ======================================================
+// 34. ÖFFENTLICHE PHASE-8.3-FUNKTIONEN
 // ======================================================
 
 window.saveSelectedAsComponent = (name = null) => {
@@ -1568,6 +1964,7 @@ window.insertComponent = (
     updateAssemblyPanel();
     outlinerManager.refresh();
     selectionPanel.updateOptions();
+    precisionPanel.update();
 
     return result;
 };
@@ -1584,23 +1981,26 @@ window.duplicateAssembly = (
     updateAssemblyPanel();
     outlinerManager.refresh();
     selectionPanel.updateOptions();
+    precisionPanel.update();
 
     return result;
 };
 
 
 // ======================================================
-// 34. ÖFFENTLICHE PHASE-8.4-FUNKTIONEN
+// 35. ÖFFENTLICHE PHASE-8.4-FUNKTIONEN
 // ======================================================
 
 window.selectAllFiltered = criteria => {
     advancedSelectionManager.selectFiltered(criteria);
     selectionPanel.updateStatus();
+    precisionPanel.update();
 };
 
 window.invertSelection = () => {
     advancedSelectionManager.invertSelection();
     selectionPanel.updateStatus();
+    precisionPanel.update();
 };
 
 window.isolateCurrentSelection = () => {
@@ -1609,6 +2009,7 @@ window.isolateCurrentSelection = () => {
     const success = isolationManager.isolate(selected);
 
     selectionPanel.updateStatus();
+    precisionPanel.update();
 
     return success;
 };
@@ -1617,16 +2018,37 @@ window.exitSelectionIsolation = () => {
     const success = isolationManager.exitIsolation();
 
     selectionPanel.updateStatus();
+    precisionPanel.update();
 
     return success;
 };
 
 
 // ======================================================
-// 35. INITIALISIERUNG
+// 36. ÖFFENTLICHE PHASE-8.5-FUNKTIONEN
+// ======================================================
+
+window.updatePrecisionPanel = () => {
+    precisionPanel.update();
+};
+
+
+// ======================================================
+// 37. ÖFFENTLICHE PHASE-8.7-FUNKTIONEN
+// ======================================================
+
+window.runModelValidation = () => {
+    return modelValidator.validate();
+};
+
+
+// ======================================================
+// 38. INITIALISIERUNG
 // ======================================================
 
 await loadInitialProject();
+
+precisionPanel.update();
 
 console.log('======================================');
 console.log('Mecabricks Clone gestartet.');
@@ -1635,4 +2057,7 @@ console.log('Phase 8.1: Objektverwaltung und Outliner.');
 console.log('Phase 8.2: Transformationen und Transformationspanel.');
 console.log('Phase 8.3: Baugruppen und wiederverwendbare Komponenten.');
 console.log('Phase 8.4: Erweiterte Auswahl und Isolation.');
+console.log('Phase 8.5: Präzisionswerkzeuge.');
+console.log('Phase 8.6: Baugruppenbibliothek und Wiederverwendung.');
+console.log('Phase 8.7: Modellprüfung und Fehlererkennung.');
 console.log('======================================');

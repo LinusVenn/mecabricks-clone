@@ -1,9 +1,14 @@
+
 import { ProjectSerializer } from './ProjectSerializer.js';
 
 function _generateProjectId() {
-    if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    if (
+        typeof crypto !== 'undefined' &&
+        typeof crypto.randomUUID === 'function'
+    ) {
         return crypto.randomUUID();
     }
+
     return `project-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
@@ -23,12 +28,13 @@ export class ProjectManager {
         this.serializer = new ProjectSerializer();
 
         const now = new Date().toISOString();
+
         this.projectInfo = {
-            id:         _generateProjectId(),
-            name:       'Neues Projekt',
-            createdAt:  now,
-            updatedAt:  now,
-            modifiedAt: now,
+            id: _generateProjectId(),
+            name: 'Neues Projekt',
+            createdAt: now,
+            updatedAt: now,
+            modifiedAt: now
         };
     }
 
@@ -38,15 +44,18 @@ export class ProjectManager {
         this.groupManager?.clear();
         this.componentLibrary?.clear();
 
-        const trimmed = (typeof name === 'string') ? name.trim() : '';
+        const trimmed = (
+            typeof name === 'string'
+        ) ? name.trim() : '';
+
         const now = new Date().toISOString();
 
         this.projectInfo = {
-            id:         _generateProjectId(),
-            name:       trimmed || 'Neues Projekt',
-            createdAt:  now,
-            updatedAt:  now,
-            modifiedAt: now,
+            id: _generateProjectId(),
+            name: trimmed || 'Neues Projekt',
+            createdAt: now,
+            updatedAt: now,
+            modifiedAt: now
         };
 
         return this.projectInfo;
@@ -57,8 +66,13 @@ export class ProjectManager {
     }
 
     renameProject(newName) {
-        if (!newName || !newName.trim()) {
-            throw new Error('Der Projektname darf nicht leer sein.');
+        if (
+            typeof newName !== 'string' ||
+            !newName.trim()
+        ) {
+            throw new Error(
+                'Der Projektname darf nicht leer sein.'
+            );
         }
 
         this.projectInfo.name = newName.trim();
@@ -91,6 +105,7 @@ export class ProjectManager {
         const link = document.createElement('a');
 
         link.href = url;
+
         link.download =
             `${this.projectInfo.name.replace(/[^a-z0-9_-]/gi, '_')}.json`;
 
@@ -103,13 +118,22 @@ export class ProjectManager {
         return json;
     }
 
+    /**
+     * Lädt ein Projekt aus einem JSON-String.
+     *
+     * Die Projektinformationen werden erst aktualisiert,
+     * wenn das Deserialisieren vollständig erfolgreich war.
+     */
     loadProjectJSON(jsonString) {
         if (typeof jsonString !== 'string') {
             throw new Error('Ungültiges Projektformat.');
         }
 
+        // JSON parsen und validieren, ohne den aktuellen
+        // Projektzustand zu verändern.
         const data = this.serializer.fromJSON(jsonString);
 
+        // Die Deserialisierung ist transaktional.
         const project = this.serializer.deserialize(
             data,
             this.library,
@@ -118,30 +142,54 @@ export class ProjectManager {
             this.componentLibrary
         );
 
+        // Erst nach erfolgreichem Laden übernehmen.
         if (project) {
+            const now = new Date().toISOString();
+
             this.projectInfo = {
                 id: project.id,
                 name: project.name,
                 createdAt: project.createdAt,
-                modifiedAt: project.updatedAt
+                updatedAt: project.updatedAt,
+                modifiedAt: project.updatedAt || now
             };
         }
 
-        return this.projectInfo;
+        return this.getProjectInfo();
     }
 
+    /**
+     * Importiert eine JSON-Projektdatei.
+     */
     async importProjectFile(file) {
         if (!file) {
             throw new Error('Keine Datei ausgewählt.');
         }
 
-        if (!file.name.toLowerCase().endsWith('.json')) {
+        if (
+            typeof file.name !== 'string' ||
+            !file.name.toLowerCase().endsWith('.json')
+        ) {
             throw new Error(
                 'Es können nur JSON-Projektdateien importiert werden.'
             );
         }
 
-        const jsonString = await file.text();
+        if (typeof file.text !== 'function') {
+            throw new Error(
+                'Die ausgewählte Datei kann nicht gelesen werden.'
+            );
+        }
+
+        let jsonString;
+
+        try {
+            jsonString = await file.text();
+        } catch {
+            throw new Error(
+                'Die Projektdatei konnte nicht gelesen werden.'
+            );
+        }
 
         return this.loadProjectJSON(jsonString);
     }

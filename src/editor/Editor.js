@@ -21,6 +21,7 @@ import { TransformInputManager } from './TransformInputManager.js';
 import { AssemblyManager } from '../assemblies/AssemblyManager.js';
 import { ComponentLibrary } from '../assemblies/ComponentLibrary.js';
 import { ComponentManager } from '../assemblies/ComponentManager.js';
+import { PrecisionManager } from '../precision/PrecisionManager.js';
 
 
 export class Editor {
@@ -79,7 +80,6 @@ export class Editor {
         );
 
         this.inputManager = new InputManager(this);
-        this.partPalette = new PartPalette(this);
 
         /** @type {import('../history/HistoryManager.js').HistoryManager | null} */
         this.historyManager = null;
@@ -159,6 +159,12 @@ export class Editor {
             this,
             this.transformConstraintManager
         );
+
+        // ---------------------------------------------------------
+// Phase 8.5: Präzisionswerkzeuge
+// ---------------------------------------------------------
+
+this.precisionManager = new PrecisionManager(this);
 
         /**
          * Callback für die Aktualisierung der Gruppen-UI.
@@ -702,6 +708,8 @@ export class Editor {
         this.multiSelectionManager.clearSelection();
 
         this.selectionManager.clearSelection();
+
+        this.precisionManager?.dispose();
     }
 
     // -------------------------------------------------------------

@@ -1,140 +1,70 @@
 
-// =====================================
-// ProjectToolbar
-// =====================================
-
-/**
- * Verwaltet die Projektwerkzeugleiste im Header des Editors.
- *
- * Die Toolbar bindet sich an bestehende DOM-Elemente (per ID)
- * und stellt nach außen Callback-Eigenschaften bereit,
- * die von main.js mit der Anwendungslogik verdrahtet werden:
- *
- *   toolbar.onSave       = () => autoSaveManager.save();
- *   toolbar.onNewProject = () => createNewProject();
- *   toolbar.onExport     = () => exportProject();
- *   toolbar.onImport     = async (file) => importFile(file);
- *   toolbar.onUndo       = () => historyManager.undo();
- *   toolbar.onRedo       = () => historyManager.redo();
- *   toolbar.onRename     = (name) => renameProject(name);
- */
 export class ProjectToolbar {
 
-
-    // =====================================
-    // Konstruktor
-    // =====================================
-
     constructor() {
+        this._nameEl = document.getElementById('autosave-project-name');
+        this._statusEl = document.getElementById('autosave-indicator');
 
-        // --- DOM-Elemente ---
+        this._saveBtn = document.getElementById('btn-save');
+        this._newBtn = document.getElementById('btn-new-project');
+        this._exportBtn = document.getElementById('btn-export');
+        this._importBtn = document.getElementById('btn-import');
+        this._undoBtn = document.getElementById('btn-undo');
+        this._redoBtn = document.getElementById('btn-redo');
+        this._fileInput = document.getElementById('project-file-input');
 
-        this._nameEl      = document.getElementById('autosave-project-name');
-        this._indicatorEl = document.getElementById('autosave-indicator');
-
-        this._btnSave       = document.getElementById('btn-save');
-        this._btnNewProject = document.getElementById('btn-new-project');
-        this._btnExport     = document.getElementById('btn-export');
-        this._btnImport     = document.getElementById('btn-import');
-        this._fileInput     = document.getElementById('project-file-input');
-        this._btnUndo       = document.getElementById('btn-undo');
-        this._btnRedo       = document.getElementById('btn-redo');
-
-
-        // --- Öffentliche Callbacks ---
-        // Werden von main.js gesetzt.
-
-        /** Wird aufgerufen, wenn der Benutzer auf „Speichern" klickt. */
         this.onSave = null;
-
-        /** Wird aufgerufen, wenn der Benutzer auf „Neu" klickt. */
         this.onNewProject = null;
-
-        /** Wird aufgerufen, wenn der Benutzer auf „Export" klickt. */
         this.onExport = null;
-
-        /**
-         * Wird aufgerufen, wenn der Benutzer eine Datei zum Importieren
-         * ausgewählt hat. Erhält das File-Objekt als Parameter.
-         * @type {((file: File) => void) | null}
-         */
         this.onImport = null;
-
-        /** Wird aufgerufen, wenn der Benutzer auf „↩ Rückgängig" klickt. */
         this.onUndo = null;
-
-        /** Wird aufgerufen, wenn der Benutzer auf „↪ Wiederholen" klickt. */
         this.onRedo = null;
-
-        /**
-         * Wird aufgerufen, wenn der Benutzer den Projektnamen geändert hat.
-         * Erhält den neuen Namen als String.
-         * @type {((name: string) => void) | null}
-         */
         this.onRename = null;
-
 
         this._bindEvents();
     }
 
-
-    // =====================================
-    // 1. Ereignisse binden
-    // =====================================
-
     _bindEvents() {
-
-        // Speichern
-        this._btnSave?.addEventListener('click', () => {
+        this._saveBtn?.addEventListener('click', () => {
             this.onSave?.();
         });
 
-        // Neues Projekt
-        this._btnNewProject?.addEventListener('click', () => {
+        this._newBtn?.addEventListener('click', () => {
             this.onNewProject?.();
         });
 
-        // Export
-        this._btnExport?.addEventListener('click', () => {
+        this._exportBtn?.addEventListener('click', () => {
             this.onExport?.();
         });
 
-        // Import – öffnet den Datei-Auswahldialog
-        this._btnImport?.addEventListener('click', () => {
+        this._importBtn?.addEventListener('click', () => {
             this._fileInput?.click();
         });
 
-        // Dateiauswahl: Datei an Callback übergeben
-        this._fileInput?.addEventListener('change', (event) => {
+        this._undoBtn?.addEventListener('click', () => {
+            this.onUndo?.();
+        });
 
-            const file = event.target.files[0];
+        this._redoBtn?.addEventListener('click', () => {
+            this.onRedo?.();
+        });
+
+        this._fileInput?.addEventListener('change', event => {
+            const file = event.target.files?.[0];
 
             if (file) {
                 this.onImport?.(file);
             }
 
-            // Eingabe zurücksetzen, damit dieselbe Datei erneut
-            // ausgewählt werden kann.
+            // Ermöglicht, dieselbe Datei erneut auszuwählen.
             event.target.value = '';
         });
 
-        // Undo
-        this._btnUndo?.addEventListener('click', () => {
-            this.onUndo?.();
-        });
-
-        // Redo
-        this._btnRedo?.addEventListener('click', () => {
-            this.onRedo?.();
-        });
-
-        // Projektname umbenennen (Klick auf den Namen)
         this._nameEl?.addEventListener('click', () => {
             this._promptRename();
         });
 
-        // Umbenennen auch per Enter-Taste erreichbar (Barrierefreiheit)
-        this._nameEl?.addEventListener('keydown', (event) => {
+        this._nameEl?.addEventListener('keydown', event => {
             if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 this._promptRename();
@@ -142,121 +72,92 @@ export class ProjectToolbar {
         });
     }
 
-
-    // =====================================
-    // 2. Projektnamen umbennen (intern)
-    // =====================================
-
     _promptRename() {
+        const current =
+            this._nameEl?.textContent?.trim() ||
+            'Unbenanntes Projekt';
 
-        const current = this._nameEl?.textContent ?? 'Unbenanntes Projekt';
+        const newName = window.prompt(
+            'Projektname:',
+            current
+        );
 
-        // Einfaches Eingabedialog – kann später durch ein
-        // eingebettetes Eingabefeld ersetzt werden.
-        const newName = window.prompt('Projektname:', current);
+        if (newName === null) {
+            return;
+        }
+
+        const trimmedName = newName.trim();
 
         if (
-            newName !== null &&
-            newName.trim() !== '' &&
-            newName.trim() !== current
+            trimmedName !== '' &&
+            trimmedName !== current
         ) {
-            this.onRename?.(newName.trim());
+            this.onRename?.(trimmedName);
         }
     }
 
-
-    // =====================================
-    // 3. Projektnamen anzeigen
-    // =====================================
-
-    /**
-     * Aktualisiert die Anzeige des Projektnamens in der Toolbar.
-     *
-     * @param {string} name
-     */
     updateProjectName(name) {
-
-        if (this._nameEl) {
-            this._nameEl.textContent = name || 'Unbenanntes Projekt';
+        if (!this._nameEl) {
+            return;
         }
+
+        this._nameEl.textContent =
+            name || 'Unbenanntes Projekt';
     }
 
+    updateSaveStatus(
+        status,
+        time = null,
+        errorMessage = null
+    ) {
+        if (!this._statusEl) {
+            return;
+        }
 
-    // =====================================
-    // 4. Speicherstatus anzeigen
-    // =====================================
-
-    /**
-     * Aktualisiert den Speicherstatus-Indikator neben dem Projektnamen.
-     *
-     * @param {'saving'|'saved'|'error'|'idle'} status
-     * @param {Date|null} time     – Zeitpunkt der letzten Speicherung
-     * @param {string|null} errorMessage – Fehlermeldung (nur bei 'error')
-     */
-    updateSaveStatus(status, time = null, errorMessage = null) {
-
-        const el = this._indicatorEl;
-        if (!el) return;
-
-        el.classList.remove(
-            'autosave-idle',
-            'autosave-saving',
-            'autosave-saved',
-            'autosave-error'
-        );
-        el.title = '';
+        this._statusEl.className = '';
+        this._statusEl.classList.add('autosave-indicator');
 
         switch (status) {
-
             case 'saving':
-                el.classList.add('autosave-saving');
-                el.textContent = 'Speichern l\u00e4uft\u2026';
+                this._statusEl.textContent = 'Speichert...';
+                this._statusEl.title = 'Projekt wird gespeichert.';
+                this._statusEl.classList.add('saving');
                 break;
 
-            case 'saved': {
-                el.classList.add('autosave-saved');
-                const timeStr = time
-                    ? time.toLocaleTimeString()
-                    : '';
-                el.textContent = `\u2713\u00a0Gespeichert${timeStr ? '\u00a0' + timeStr : ''}`;
+            case 'saved':
+                this._statusEl.textContent = 'Gespeichert';
+
+                this._statusEl.title = time
+                    ? `Zuletzt gespeichert: ${new Date(time).toLocaleString()}`
+                    : 'Projekt wurde gespeichert.';
+
+                this._statusEl.classList.add('saved');
                 break;
-            }
 
             case 'error':
-                el.classList.add('autosave-error');
-                el.textContent = '\u26a0\ufe0f Speichern fehlgeschlagen';
-                el.title = errorMessage || '';
+                this._statusEl.textContent = 'Speicherfehler';
+                this._statusEl.title =
+                    errorMessage || 'Das Projekt konnte nicht gespeichert werden.';
+
+                this._statusEl.classList.add('error');
                 break;
 
+            case 'idle':
             default:
-                el.classList.add('autosave-idle');
-                el.textContent = '';
+                this._statusEl.textContent = '';
+                this._statusEl.title = '';
+                this._statusEl.classList.add('idle');
+                break;
         }
     }
 
-
-    // =====================================
-    // 5. Undo/Redo-Schaltflächen aktualisieren
-    // =====================================
-
-    /**
-     * Aktiviert oder deaktiviert die Undo- und Redo-Schaltflächen
-     * entsprechend dem aktuellen History-Zustand.
-     *
-     * Wird vom HistoryManager über dessen onHistoryChange-Callback
-     * aufgerufen.
-     *
-     * @param {boolean} canUndo
-     * @param {boolean} canRedo
-     */
     updateUndoRedo(canUndo, canRedo) {
-
-        if (this._btnUndo) {
-            this._btnUndo.disabled = !canUndo;
+        if (this._undoBtn) {
+            this._undoBtn.disabled = !canUndo;
         }
 
-        if (this._btnRedo) {
-            this._btnRedo.disabled = !canRedo;
+        if (this._redoBtn) {
+            this._redoBtn.disabled = !canRedo;
         }
     }
 }

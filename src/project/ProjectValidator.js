@@ -22,7 +22,11 @@ export class ProjectValidator {
 
         // ── 1. Grundstruktur ─────────────────────────────────
 
-        if (!data || typeof data !== 'object') {
+        if (
+            !data ||
+            typeof data !== 'object' ||
+            Array.isArray(data)
+        ) {
             throw new Error('Ungültige Projektdatei.');
         }
 
@@ -42,7 +46,11 @@ export class ProjectValidator {
 
         // ── 2. Projektinformationen ──────────────────────────
 
-        if (!data.project || typeof data.project !== 'object') {
+        if (
+            !data.project ||
+            typeof data.project !== 'object' ||
+            Array.isArray(data.project)
+        ) {
             throw new Error('Projektinformationen fehlen.');
         }
 
@@ -62,6 +70,17 @@ export class ProjectValidator {
         const brickIds = new Set();
 
         for (const brick of data.bricks) {
+
+            // Zusätzliche Prüfung: Eintrag muss ein Objekt sein.
+            if (
+                !brick ||
+                typeof brick !== 'object' ||
+                Array.isArray(brick)
+            ) {
+                throw new Error(
+                    'Die Steinliste enthält einen ungültigen Eintrag.'
+                );
+            }
 
             if (!brick.id) {
                 throw new Error('Ein Stein hat keine ID.');
@@ -118,6 +137,17 @@ export class ProjectValidator {
         const connectionIds = new Set();
 
         for (const conn of data.connections) {
+
+            // Zusätzliche Prüfung: Eintrag muss ein Objekt sein.
+            if (
+                !conn ||
+                typeof conn !== 'object' ||
+                Array.isArray(conn)
+            ) {
+                throw new Error(
+                    'Die Verbindungsliste enthält einen ungültigen Eintrag.'
+                );
+            }
 
             if (!conn.id) {
                 throw new Error('Eine Verbindung hat keine ID.');
@@ -188,9 +218,18 @@ export class ProjectValidator {
 
             for (const group of (data.groups ?? [])) {
 
+                // Zusätzliche Prüfung: Gruppe muss ein Objekt sein.
                 if (
                     !group ||
                     typeof group !== 'object' ||
+                    Array.isArray(group)
+                ) {
+                    throw new Error(
+                        'Die Gruppenliste enthält einen ungültigen Eintrag.'
+                    );
+                }
+
+                if (
                     typeof group.id !== 'string' ||
                     !group.id.trim()
                 ) {
@@ -271,8 +310,18 @@ export class ProjectValidator {
 
             for (const component of (data.components ?? [])) {
 
+                // Zusätzliche Prüfung: Komponente muss ein Objekt sein.
                 if (
                     !component ||
+                    typeof component !== 'object' ||
+                    Array.isArray(component)
+                ) {
+                    throw new Error(
+                        'Die Komponentenbibliothek enthält einen ungültigen Eintrag.'
+                    );
+                }
+
+                if (
                     typeof component.id !== 'string' ||
                     !component.id.trim()
                 ) {
@@ -316,6 +365,17 @@ export class ProjectValidator {
                 const localBrickIds = new Set();
 
                 for (const brick of component.bricks) {
+
+                    // Zusätzliche Prüfung: Bauteil muss ein Objekt sein.
+                    if (
+                        !brick ||
+                        typeof brick !== 'object' ||
+                        Array.isArray(brick)
+                    ) {
+                        throw new Error(
+                            `Komponente "${component.name}" enthält einen ungültigen Bauteileintrag.`
+                        );
+                    }
 
                     if (!brick.id || !brick.type) {
                         throw new Error(
@@ -362,6 +422,17 @@ export class ProjectValidator {
                 const localConnectionIds = new Set();
 
                 for (const connection of component.connections) {
+
+                    // Zusätzliche Prüfung: Verbindung muss ein Objekt sein.
+                    if (
+                        !connection ||
+                        typeof connection !== 'object' ||
+                        Array.isArray(connection)
+                    ) {
+                        throw new Error(
+                            `Komponente "${component.name}" enthält einen ungültigen Verbindungseintrag.`
+                        );
+                    }
 
                     if (!connection.id || !connection.type) {
                         throw new Error(
@@ -413,6 +484,7 @@ export class ProjectValidator {
         return true;
     }
 
+
     // ========================================
     // 2. Validierung (nicht-werfend)
     // ========================================
@@ -436,6 +508,7 @@ export class ProjectValidator {
         }
     }
 
+
     // ========================================
     // 3. Interne Hilfsmethode: Vektor prüfen
     // ========================================
@@ -444,6 +517,8 @@ export class ProjectValidator {
 
         if (
             !vector ||
+            typeof vector !== 'object' ||
+            Array.isArray(vector) ||
             !Number.isFinite(vector.x) ||
             !Number.isFinite(vector.y) ||
             !Number.isFinite(vector.z)

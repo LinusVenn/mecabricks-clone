@@ -1,36 +1,29 @@
 
 export class AdvancedSelectionManager {
-
     constructor({
         library,
         groupManager = null,
         multiSelectionManager,
+        selectionManager = null,
         selectionFilter = null
     } = {}) {
         if (!library) {
-            throw new Error(
-                'AdvancedSelectionManager: PartLibrary fehlt.'
-            );
+            throw new Error('AdvancedSelectionManager: PartLibrary fehlt.');
         }
 
         if (!multiSelectionManager) {
-            throw new Error(
-                'AdvancedSelectionManager: MultiSelectionManager fehlt.'
-            );
+            throw new Error('AdvancedSelectionManager: MultiSelectionManager fehlt.');
         }
 
         this.library = library;
         this.groupManager = groupManager;
         this.multiSelectionManager = multiSelectionManager;
+        this.selectionManager = selectionManager;
         this.selectionFilter = selectionFilter;
 
         this.selectedBricks = [];
         this.onSelectionChange = null;
     }
-
-    // --------------------------------------------------
-    // Auswahl auslesen
-    // --------------------------------------------------
 
     getAllBricks() {
         if (typeof this.library.getAll === 'function') {
@@ -42,28 +35,50 @@ export class AdvancedSelectionManager {
             : [];
     }
 
-    getSelection() {
-        if (
-            typeof this.multiSelectionManager.getSelection === 'function'
-        ) {
-            const selection =
-                this.multiSelectionManager.getSelection();
+    // --------------------------------------------------
+    // Auswahl auslesen
+    // --------------------------------------------------
 
-            if (Array.isArray(selection)) {
-                this.selectedBricks = selection;
-                return [...selection];
+    getSelection() {
+        const selected = new Map();
+
+        // Mehrfachauswahl über IDs auslesen.
+        if (typeof this.multiSelectionManager.getSelectedIds === 'function') {
+            for (const id of this.multiSelectionManager.getSelectedIds()) {
+                const brick = this.library.getById(id);
+                if (brick) selected.set(brick.id, brick);
+            }
+        } else if (Array.isArray(this.multiSelectionManager.selectedBricks)) {
+            for (const brick of this.multiSelectionManager.selectedBricks) {
+                if (brick?.id) selected.set(brick.id, brick);
+            }
+        } else if (typeof this.multiSelectionManager.getSelection === 'function') {
+            for (const item of this.multiSelectionManager.getSelection()) {
+                const brick = typeof item === 'string'
+                    ? this.library.getById(item)
+                    : item;
+
+                if (brick?.id) selected.set(brick.id, brick);
             }
         }
 
-        if (
-            Array.isArray(this.multiSelectionManager.selectedBricks)
-        ) {
-            this.selectedBricks = [
-                ...this.multiSelectionManager.selectedBricks
-            ];
+        // Normale Einzelauswahl ergänzen.
+        const selectedObject = this.selectionManager?.selectedObject;
+        const singleId = this.getBrickId(selectedObject);
 
-            return [...this.selectedBricks];
+        if (singleId) {
+            const brick = this.library.getById(singleId);
+            if (brick) selected.set(brick.id, brick);
         }
+
+        // Fallback für Implementierungen ohne öffentliche Getter.
+        if (selected.size === 0 && this.selectedBricks.length > 0) {
+            for (const brick of this.selectedBricks) {
+                if (brick?.id) selected.set(brick.id, brick);
+            }
+        }
+
+        this.selectedBricks = [...selected.values()];
 
         return [...this.selectedBricks];
     }
@@ -76,50 +91,62 @@ export class AdvancedSelectionManager {
         const validBricks = this.filterSelectable(bricks);
 
         this.selectedBricks = [
-            ...new Map(
-                validBricks.map(brick => [brick.id, brick])
-            ).values()
+            ...new Map(validBricks.map(brick => [brick.id, brick])).values()
         ];
 
-        this.multiSelectionManager.setSelection(
-            this.selectedBricks
-        );
+        const ids = this.selectedBricks.map(brick => brick.id);
 
-        this.onSelectionChange?.(
-            this.getSelection()
-        );
+        this.multiSelectionManager.setSelection(ids);
 
-        return this.getSelection();
+        // Falls die Editor-Callbacks keine Einzelauswahl setzen,
+        // wird sie hier zusätzlich synchronisiert.
+        if (this.selectionManager) {
+            if (this.selectedBricks.length === 1) {
+                const object = this.getObject(this.selectedBricks[0]);
+
+                if (object) {
+                    this.selectionManager.selectObject(object);
+                }
+            } else if (this.selectedBricks.length === 0) {
+                this.selectionManager.clearSelection();
+            } else {
+                this.selectionManager.clearSelection();
+            }
+        }
+
+        const result = this.getSelection();
+
+        this.onSelectionChange?.(result);
+
+        return result;
     }
 
     addToSelection(bricks) {
         return this.setSelection([
             ...this.getSelection(),
-            ...bricks
+            ...(Array.isArray(bricks) ? bricks : [bricks])
         ]);
     }
 
     removeFromSelection(bricks) {
         const removeIds = new Set(
-            bricks.map(brick => brick.id)
+            (Array.isArray(bricks) ? bricks : [bricks])
+                .filter(Boolean)
+                .map(brick => brick.id)
         );
 
         return this.setSelection(
-            this.getSelection().filter(
-                brick => !removeIds.has(brick.id)
-            )
+            this.getSelection().filter(brick => !removeIds.has(brick.id))
         );
     }
 
     clearSelection() {
         this.selectedBricks = [];
 
-        if (
-            typeof this.multiSelectionManager.clearSelection === 'function'
-        ) {
-            this.multiSelectionManager.clearSelection();
-        } else {
-            this.multiSelectionManager.setSelection([]);
+        this.multiSelectionManager.clearSelection?.();
+
+        if (this.selectionManager) {
+            this.selectionManager.clearSelection();
         }
 
         this.onSelectionChange?.([]);
@@ -132,21 +159,15 @@ export class AdvancedSelectionManager {
     // --------------------------------------------------
 
     selectAll() {
-        return this.setSelection(
-            this.getAllBricks()
-        );
+        return this.setSelection(this.getAllBricks());
     }
 
     selectFiltered(criteria = {}) {
         if (!this.selectionFilter) {
-            throw new Error(
-                'AdvancedSelectionManager: Kein SelectionFilter vorhanden.'
-            );
+            throw new Error('AdvancedSelectionManager: Kein SelectionFilter vorhanden.');
         }
 
-        const results = this.selectionFilter.filter(criteria);
-
-        return this.setSelection(results);
+        return this.setSelection(this.selectionFilter.filter(criteria));
     }
 
     selectByType(type) {
@@ -165,14 +186,17 @@ export class AdvancedSelectionManager {
         return this.selectFiltered({ name });
     }
 
+    selectBySpatialCriteria(spatial) {
+        return this.selectFiltered({ spatial });
+    }
+
     selectGroup(groupId) {
         if (!this.groupManager) return [];
 
         const group = this.groupManager.getGroup(groupId);
-
         if (!group) return [];
 
-        const bricks = group.brickIds
+        const bricks = [...group.brickIds]
             .map(id => this.library.getById(id))
             .filter(Boolean);
 
@@ -188,11 +212,11 @@ export class AdvancedSelectionManager {
             this.getSelection().map(brick => brick.id)
         );
 
-        const remaining = this.getAllBricks().filter(
-            brick => !currentIds.has(brick.id)
-        );
+        const selectable = this.filterSelectable(this.getAllBricks());
 
-        return this.setSelection(remaining);
+        return this.setSelection(
+            selectable.filter(brick => !currentIds.has(brick.id))
+        );
     }
 
     // --------------------------------------------------
@@ -200,25 +224,18 @@ export class AdvancedSelectionManager {
     // --------------------------------------------------
 
     expandSelection() {
-        if (!this.groupManager) {
-            return this.getSelection();
-        }
-
-        const selection = this.getSelection();
+        if (!this.groupManager) return this.getSelection();
 
         const expanded = new Map(
-            selection.map(brick => [brick.id, brick])
+            this.getSelection().map(brick => [brick.id, brick])
         );
 
-        for (const brick of selection) {
-            const group = this.groupManager.getGroupByBrickId(
-                brick.id
-            );
-
+        for (const brick of [...expanded.values()]) {
+            const group = this.groupManager.getGroupByBrickId(brick.id);
             if (!group) continue;
 
-            for (const brickId of group.brickIds) {
-                const groupBrick = this.library.getById(brickId);
+            for (const id of group.brickIds) {
+                const groupBrick = this.library.getById(id);
 
                 if (groupBrick) {
                     expanded.set(groupBrick.id, groupBrick);
@@ -234,32 +251,20 @@ export class AdvancedSelectionManager {
     // --------------------------------------------------
 
     shrinkSelection() {
-        if (!this.groupManager) {
-            return this.getSelection();
-        }
+        if (!this.groupManager) return this.getSelection();
 
         const selection = this.getSelection();
-
-        const selectedIds = new Set(
-            selection.map(brick => brick.id)
-        );
-
-        const groups = this.groupManager.getAllGroups();
-
+        const selectedIds = new Set(selection.map(brick => brick.id));
         const removeIds = new Set();
 
-        for (const group of groups) {
-            const groupIds = group.brickIds;
+        for (const group of this.groupManager.getAllGroups()) {
+            const groupIds = [...group.brickIds];
 
             const selectedCount = groupIds.filter(
                 id => selectedIds.has(id)
             ).length;
 
-            const isPartiallySelected =
-                selectedCount > 0 &&
-                selectedCount < groupIds.length;
-
-            if (isPartiallySelected) {
+            if (selectedCount > 0 && selectedCount < groupIds.length) {
                 for (const id of groupIds) {
                     removeIds.add(id);
                 }
@@ -267,79 +272,73 @@ export class AdvancedSelectionManager {
         }
 
         return this.setSelection(
-            selection.filter(
-                brick => !removeIds.has(brick.id)
-            )
+            selection.filter(brick => !removeIds.has(brick.id))
         );
     }
 
     // --------------------------------------------------
-    // Auswahl filtern
+    // Gültigkeit
     // --------------------------------------------------
 
     filterSelectable(bricks) {
         if (!Array.isArray(bricks)) return [];
 
         return bricks.filter(brick => {
-            if (!brick || !brick.id) return false;
+            if (!brick?.id) return false;
 
             const object = this.getObject(brick);
 
-            const locked =
+            if (
                 brick.locked === true ||
-                brick.userData?.locked === true ||
-                object?.userData?.locked === true;
-
-            if (locked) return false;
-
-            if (brick.visible === false) return false;
-
-            if (object) {
-                let current = object;
-
-                while (current) {
-                    if (current.visible === false) {
-                        return false;
-                    }
-
-                    current = current.parent;
-                }
+                brick.userData?.locked === true
+            ) {
+                return false;
             }
 
-            return true;
+            let current = object;
+
+            while (current) {
+                if (
+                    current.visible === false ||
+                    current.userData?.editorLocked === true ||
+                    current.userData?.locked === true
+                ) {
+                    return false;
+                }
+
+                current = current.parent;
+            }
+
+            return brick.visible !== false;
         });
     }
-
-    // --------------------------------------------------
-    // Three.js-Objekt ermitteln
-    // --------------------------------------------------
 
     getObject(brick) {
         if (!brick) return null;
 
-        if (brick.group?.isObject3D) {
-            return brick.group;
-        }
+        if (brick.group?.isObject3D) return brick.group;
+        if (brick.object?.isObject3D) return brick.object;
+        if (brick.mesh?.isObject3D) return brick.mesh;
 
-        if (brick.object?.isObject3D) {
-            return brick.object;
-        }
+        return null;
+    }
 
-        if (brick.mesh?.isObject3D) {
-            return brick.mesh;
+    getBrickId(object) {
+        let current = object;
+
+        while (current) {
+            if (current.userData?.brickId !== undefined) {
+                return current.userData.brickId;
+            }
+
+            current = current.parent;
         }
 
         return null;
     }
 
-    // --------------------------------------------------
-    // Callback
-    // --------------------------------------------------
-
     setOnSelectionChange(callback) {
         this.onSelectionChange =
-            typeof callback === 'function'
-                ? callback
-                : null;
+            typeof callback === 'function' ? callback : null;
     }
 }

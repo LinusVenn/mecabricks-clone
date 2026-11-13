@@ -1,3 +1,4 @@
+
 import { ProjectValidator } from './ProjectValidator.js';
 
 export class ProjectSerializer {
@@ -48,7 +49,6 @@ export class ProjectSerializer {
         return JSON.stringify(projectData, null, 4);
     }
 
-    // Von ProjectManager verwendete Schnittstelle.
     serialize(
         library,
         connectionManager,
@@ -85,6 +85,54 @@ export class ProjectSerializer {
         return this.validator.validate(data);
     }
 
+    /**
+     * Lädt die übergebenen Daten in die Manager.
+     *
+     * Diese Methode verändert den Zustand der Manager.
+     * Der Aufrufer muss deshalb bei Bedarf vorher eine
+     * Sicherung des aktuellen Zustands erstellen.
+     */
+    _applyData(
+        data,
+        library,
+        connectionManager,
+        groupManager = null,
+        componentLibrary = null
+    ) {
+        library.clear();
+        connectionManager.clear();
+        groupManager?.clear();
+        componentLibrary?.clear();
+
+        for (const brickData of data.bricks) {
+            library.addBrickFromData(brickData);
+        }
+
+        connectionManager.loadFromData(
+            data.connections,
+            library
+        );
+
+        if (groupManager && Array.isArray(data.groups)) {
+            groupManager.loadFromData(
+                data.groups,
+                library
+            );
+        }
+
+        if (componentLibrary) {
+            componentLibrary.loadFromData(
+                data.components ?? []
+            );
+        }
+    }
+
+    /**
+     * Lädt ein Projekt transaktional.
+     *
+     * Falls das Laden fehlschlägt, wird versucht,
+     * den vorherigen Zustand wiederherzustellen.
+     */
     deserialize(
         data,
         library,
@@ -92,43 +140,60 @@ export class ProjectSerializer {
         groupManager = null,
         componentLibrary = null
     ) {
+        // Zuerst die eingehenden Daten vollständig validieren.
         this.validate(data);
 
-        library.clear();
-        connectionManager.clear();
-        groupManager?.clear();
-        componentLibrary?.clear();
+        // Aktuellen Zustand sichern.
+        const backup = this.createProject(
+            library,
+            connectionManager,
+            {
+                id: 'temporary-backup',
+                name: 'Temporäre Sicherung'
+            },
+            groupManager,
+            componentLibrary
+        );
 
         try {
-            for (const brickData of data.bricks) {
-                library.addBrickFromData(brickData);
-            }
-
-            connectionManager.loadFromData(
-                data.connections,
-                library
+            // Neues Projekt laden.
+            this._applyData(
+                data,
+                library,
+                connectionManager,
+                groupManager,
+                componentLibrary
             );
 
-            if (groupManager && Array.isArray(data.groups)) {
-                groupManager.loadFromData(
-                    data.groups,
-                    library
+        } catch (loadError) {
+
+            try {
+                // Teilweise geladene Daten entfernen
+                // und vorherigen Zustand wiederherstellen.
+                this._applyData(
+                    backup,
+                    library,
+                    connectionManager,
+                    groupManager,
+                    componentLibrary
+                );
+
+            } catch (restoreError) {
+
+                throw new Error(
+                    'Das Projekt konnte nicht geladen werden. ' +
+                    'Zusätzlich ist die Wiederherstellung des vorherigen ' +
+                    'Projektzustands fehlgeschlagen. ' +
+                    `Ladefehler: ${loadError.message}. ` +
+                    `Wiederherstellungsfehler: ${restoreError.message}`
                 );
             }
 
-            if (componentLibrary) {
-                componentLibrary.loadFromData(
-                    data.components ?? []
-                );
-            }
-
-        } catch (error) {
-            library.clear();
-            connectionManager.clear();
-            groupManager?.clear();
-            componentLibrary?.clear();
-
-            throw error;
+            throw new Error(
+                'Das Projekt konnte nicht geladen werden. ' +
+                'Der vorherige Projektzustand wurde wiederhergestellt. ' +
+                `Ursache: ${loadError.message}`
+            );
         }
 
         return data.project;

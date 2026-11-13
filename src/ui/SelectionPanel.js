@@ -1,34 +1,14 @@
 
 export class SelectionPanel {
-
     constructor(
         container,
         advancedSelectionManager,
         selectionFilter,
         isolationManager
     ) {
-        if (!container) {
-            throw new Error(
-                'SelectionPanel: Container fehlt.'
-            );
-        }
-
-        if (!advancedSelectionManager) {
-            throw new Error(
-                'SelectionPanel: AdvancedSelectionManager fehlt.'
-            );
-        }
-
-        if (!selectionFilter) {
-            throw new Error(
-                'SelectionPanel: SelectionFilter fehlt.'
-            );
-        }
-
-        if (!isolationManager) {
-            throw new Error(
-                'SelectionPanel: IsolationManager fehlt.'
-            );
+        if (!container || !advancedSelectionManager ||
+            !selectionFilter || !isolationManager) {
+            throw new Error('SelectionPanel: Abhängigkeiten fehlen.');
         }
 
         this.container = typeof container === 'string'
@@ -36,24 +16,26 @@ export class SelectionPanel {
             : container;
 
         if (!this.container) {
-            throw new Error(
-                'SelectionPanel: Container wurde nicht gefunden.'
-            );
+            throw new Error('SelectionPanel: Container wurde nicht gefunden.');
         }
 
-        this.advancedSelectionManager =
-            advancedSelectionManager;
-
+        this.advancedSelectionManager = advancedSelectionManager;
         this.selectionFilter = selectionFilter;
-
         this.isolationManager = isolationManager;
 
         this.isDisposed = false;
+        this.previousSelectionCallback =
+            this.advancedSelectionManager.onSelectionChange;
 
         this.injectStyles();
         this.createLayout();
         this.bindEvents();
         this.updateOptions();
+
+        this.advancedSelectionManager.setOnSelectionChange?.(() => {
+            this.updateStatus();
+        });
+
         this.updateStatus();
     }
 
@@ -62,12 +44,9 @@ export class SelectionPanel {
     // --------------------------------------------------
 
     injectStyles() {
-        if (document.getElementById('selection-panel-styles')) {
-            return;
-        }
+        if (document.getElementById('selection-panel-styles')) return;
 
         const style = document.createElement('style');
-
         style.id = 'selection-panel-styles';
 
         style.textContent = `
@@ -126,6 +105,16 @@ export class SelectionPanel {
                 border-color: #4b9eff;
             }
 
+            .selection-panel .selection-grid {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 7px;
+            }
+
+            .selection-panel .selection-grid label {
+                min-width: 0;
+            }
+
             .selection-button-row {
                 display: flex;
                 flex-wrap: wrap;
@@ -176,6 +165,12 @@ export class SelectionPanel {
             .selection-isolation-status {
                 color: #e6c875;
             }
+
+            .selection-help {
+                color: #999;
+                font-size: 11px;
+                line-height: 1.4;
+            }
         `;
 
         document.head.appendChild(style);
@@ -189,7 +184,6 @@ export class SelectionPanel {
         this.container.innerHTML = '';
 
         this.root = document.createElement('div');
-
         this.root.className = 'selection-panel';
 
         this.root.innerHTML = `
@@ -202,11 +196,8 @@ export class SelectionPanel {
 
                 <label>
                     Name
-                    <input
-                        type="text"
-                        data-filter="name"
-                        placeholder="Bauteilname ..."
-                    >
+                    <input type="text" data-filter="name"
+                        placeholder="Bauteilname ...">
                 </label>
 
                 <label>
@@ -238,15 +229,112 @@ export class SelectionPanel {
                 </label>
 
                 <div class="selection-button-row">
-                    <button
-                        class="primary"
-                        data-action="apply-filter"
-                    >
+                    <button class="primary" data-action="apply-filter">
                         Auswahl anwenden
                     </button>
-
                     <button data-action="clear-filter">
                         Filter zurücksetzen
+                    </button>
+                </div>
+            </div>
+
+            <div class="selection-section">
+                <div class="selection-section-title">
+                    Räumliche Auswahl – Koordinatenbereich
+                </div>
+
+                <div class="selection-grid">
+                    <label>
+                        X Minimum
+                        <input type="number" step="any" data-spatial="minX"
+                            placeholder="Minimum">
+                    </label>
+
+                    <label>
+                        X Maximum
+                        <input type="number" step="any" data-spatial="maxX"
+                            placeholder="Maximum">
+                    </label>
+
+                    <label>
+                        Y Minimum
+                        <input type="number" step="any" data-spatial="minY"
+                            placeholder="Minimum">
+                    </label>
+
+                    <label>
+                        Y Maximum
+                        <input type="number" step="any" data-spatial="maxY"
+                            placeholder="Maximum">
+                    </label>
+
+                    <label>
+                        Z Minimum
+                        <input type="number" step="any" data-spatial="minZ"
+                            placeholder="Minimum">
+                    </label>
+
+                    <label>
+                        Z Maximum
+                        <input type="number" step="any" data-spatial="maxZ"
+                            placeholder="Maximum">
+                    </label>
+                </div>
+
+                <div class="selection-section-title">
+                    Räumliche Auswahl – Radius
+                </div>
+
+                <div class="selection-grid">
+                    <label>
+                        Mittelpunkt X
+                        <input type="number" step="any"
+                            data-spatial="centerX" placeholder="0">
+                    </label>
+
+                    <label>
+                        Mittelpunkt Y
+                        <input type="number" step="any"
+                            data-spatial="centerY" placeholder="0">
+                    </label>
+
+                    <label>
+                        Mittelpunkt Z
+                        <input type="number" step="any"
+                            data-spatial="centerZ" placeholder="0">
+                    </label>
+
+                    <label>
+                        Radius
+                        <input type="number" min="0" step="any"
+                            data-spatial="radius" placeholder="Radius">
+                    </label>
+                </div>
+
+                <label>
+                    Räumliche Bedingung
+                    <select data-spatial="mode">
+                        <option value="intersects">
+                            Bereich berührt Bauteil
+                        </option>
+                        <option value="contained">
+                            Bauteil vollständig im Bereich
+                        </option>
+                    </select>
+                </label>
+
+                <div class="selection-help">
+                    Koordinaten beziehen sich auf die Weltposition.
+                    Leere Grenzen werden nicht berücksichtigt.
+                    Ein Radius wird um den angegebenen Mittelpunkt geprüft.
+                </div>
+
+                <div class="selection-button-row">
+                    <button class="primary" data-action="apply-spatial">
+                        Räumlich auswählen
+                    </button>
+                    <button data-action="clear-spatial">
+                        Raumfilter zurücksetzen
                     </button>
                 </div>
             </div>
@@ -260,7 +348,6 @@ export class SelectionPanel {
                     <button data-action="select-all">
                         Alle auswählen
                     </button>
-
                     <button data-action="invert">
                         Auswahl umkehren
                     </button>
@@ -270,7 +357,6 @@ export class SelectionPanel {
                     <button data-action="expand">
                         Baugruppen erweitern
                     </button>
-
                     <button data-action="shrink">
                         Baugruppen reduzieren
                     </button>
@@ -289,17 +375,10 @@ export class SelectionPanel {
                 </div>
 
                 <div class="selection-button-row">
-                    <button
-                        class="primary"
-                        data-action="isolate"
-                    >
+                    <button class="primary" data-action="isolate">
                         Auswahl isolieren
                     </button>
-
-                    <button
-                        class="danger"
-                        data-action="exit-isolation"
-                    >
+                    <button class="danger" data-action="exit-isolation">
                         Isolation beenden
                     </button>
                 </div>
@@ -309,27 +388,20 @@ export class SelectionPanel {
                 0 Bauteile ausgewählt
             </div>
 
-            <div
-                class="selection-isolation-status"
-                data-isolation-status
-            >
+            <div class="selection-isolation-status" data-isolation-status>
                 Isolation nicht aktiv
             </div>
         `;
 
         this.container.appendChild(this.root);
 
-        this.statusElement = this.root.querySelector(
-            '[data-status]'
-        );
-
-        this.isolationStatusElement = this.root.querySelector(
-            '[data-isolation-status]'
-        );
+        this.statusElement = this.root.querySelector('[data-status]');
+        this.isolationStatusElement =
+            this.root.querySelector('[data-isolation-status]');
     }
 
     // --------------------------------------------------
-    // Optionen laden
+    // Filteroptionen
     // --------------------------------------------------
 
     updateOptions() {
@@ -351,42 +423,32 @@ export class SelectionPanel {
             'Alle Materialien'
         );
 
-        const groups =
-            this.selectionFilter.getAvailableGroups();
-
         const groupSelect = this.getFilterElement('groupId');
+        const previousValue = groupSelect.value;
 
         groupSelect.innerHTML = '';
+        groupSelect.add(new Option('Alle Baugruppen', ''));
 
-        groupSelect.add(
-            new Option('Alle Baugruppen', '')
-        );
-
-        for (const group of groups) {
+        for (const group of this.selectionFilter.getAvailableGroups()) {
             groupSelect.add(
-                new Option(
-                    group.name || 'Unbenannte Baugruppe',
-                    group.id
-                )
+                new Option(group.name || 'Unbenannte Baugruppe', group.id)
             );
+        }
+
+        if ([...groupSelect.options].some(option => option.value === previousValue)) {
+            groupSelect.value = previousValue;
         }
     }
 
     updateSelect(filterName, values, defaultLabel) {
         const select = this.getFilterElement(filterName);
-
         const previousValue = select.value;
 
         select.innerHTML = '';
-
-        select.add(
-            new Option(defaultLabel, '')
-        );
+        select.add(new Option(defaultLabel, ''));
 
         for (const value of values) {
-            select.add(
-                new Option(value, value)
-            );
+            select.add(new Option(value, value));
         }
 
         if (values.includes(previousValue)) {
@@ -395,9 +457,7 @@ export class SelectionPanel {
     }
 
     getFilterElement(name) {
-        return this.root.querySelector(
-            `[data-filter="${name}"]`
-        );
+        return this.root.querySelector(`[data-filter="${name}"]`);
     }
 
     getFilterCriteria() {
@@ -411,24 +471,79 @@ export class SelectionPanel {
     }
 
     // --------------------------------------------------
+    // Räumliche Kriterien
+    // --------------------------------------------------
+
+    getSpatialCriteria() {
+        const result = {};
+
+        for (const element of this.root.querySelectorAll('[data-spatial]')) {
+            const key = element.dataset.spatial;
+
+            if (key === 'mode') {
+                result.mode = element.value;
+                continue;
+            }
+
+            if (element.value.trim() === '') continue;
+
+            const value = Number(element.value);
+
+            if (!Number.isFinite(value)) {
+                throw new Error(`Ungültiger Zahlenwert für ${key}.`);
+            }
+
+            result[key] = value;
+        }
+
+        const hasSpatialValue = [
+            'minX', 'maxX', 'minY', 'maxY', 'minZ', 'maxZ', 'radius'
+        ].some(key => result[key] !== undefined);
+
+        if (!hasSpatialValue) {
+            throw new Error('Bitte gib mindestens eine räumliche Grenze oder einen Radius an.');
+        }
+
+        if (
+            result.minX !== undefined && result.maxX !== undefined &&
+            result.minX > result.maxX
+        ) {
+            throw new Error('X-Minimum darf nicht größer als X-Maximum sein.');
+        }
+
+        if (
+            result.minY !== undefined && result.maxY !== undefined &&
+            result.minY > result.maxY
+        ) {
+            throw new Error('Y-Minimum darf nicht größer als Y-Maximum sein.');
+        }
+
+        if (
+            result.minZ !== undefined && result.maxZ !== undefined &&
+            result.minZ > result.maxZ
+        ) {
+            throw new Error('Z-Minimum darf nicht größer als Z-Maximum sein.');
+        }
+
+        if (result.radius !== undefined && result.radius < 0) {
+            throw new Error('Der Radius darf nicht negativ sein.');
+        }
+
+        return result;
+    }
+
+    // --------------------------------------------------
     // Events
     // --------------------------------------------------
 
     bindEvents() {
         this.root.addEventListener('click', event => {
-            const button = event.target.closest(
-                '[data-action]'
-            );
-
-            if (!button) return;
+            const button = event.target.closest('[data-action]');
+            if (!button || !this.root.contains(button)) return;
 
             this.handleAction(button.dataset.action);
         });
     }
-
-    // --------------------------------------------------
-    // Aktionen
-    // --------------------------------------------------
 
     handleAction(action) {
         try {
@@ -439,6 +554,14 @@ export class SelectionPanel {
 
                 case 'clear-filter':
                     this.clearFilter();
+                    break;
+
+                case 'apply-spatial':
+                    this.applySpatialFilter();
+                    break;
+
+                case 'clear-spatial':
+                    this.clearSpatialFilter();
                     break;
 
                 case 'select-all':
@@ -470,11 +593,7 @@ export class SelectionPanel {
                     break;
             }
         } catch (error) {
-            console.error(
-                'SelectionPanel: Aktion fehlgeschlagen:',
-                error
-            );
-
+            console.error('SelectionPanel: Aktion fehlgeschlagen:', error);
             window.alert(error.message);
         }
 
@@ -482,42 +601,48 @@ export class SelectionPanel {
     }
 
     // --------------------------------------------------
-    // Filter
+    // Aktionen
     // --------------------------------------------------
 
     applyFilter() {
-        const criteria = this.getFilterCriteria();
-
         this.advancedSelectionManager.selectFiltered(
-            criteria
+            this.getFilterCriteria()
         );
     }
 
     clearFilter() {
-        this.getFilterElement('name').value = '';
-        this.getFilterElement('type').value = '';
-        this.getFilterElement('color').value = '';
-        this.getFilterElement('material').value = '';
-        this.getFilterElement('groupId').value = '';
+        for (const element of this.root.querySelectorAll('[data-filter]')) {
+            element.value = '';
+        }
 
         this.advancedSelectionManager.clearSelection();
-
         this.updateOptions();
     }
 
-    // --------------------------------------------------
-    // Isolation
-    // --------------------------------------------------
+    applySpatialFilter() {
+        const spatial = this.getSpatialCriteria();
+
+        this.advancedSelectionManager.selectFiltered({
+            ...this.getFilterCriteria(),
+            spatial
+        });
+    }
+
+    clearSpatialFilter() {
+        for (const element of this.root.querySelectorAll('[data-spatial]')) {
+            if (element.dataset.spatial === 'mode') {
+                element.value = 'intersects';
+            } else {
+                element.value = '';
+            }
+        }
+    }
 
     isolateSelection() {
-        const selection =
-            this.advancedSelectionManager.getSelection();
+        const selection = this.advancedSelectionManager.getSelection();
 
         if (selection.length === 0) {
-            window.alert(
-                'Bitte wähle zuerst mindestens ein Bauteil aus.'
-            );
-
+            window.alert('Bitte wähle zuerst mindestens ein Bauteil aus.');
             return;
         }
 
@@ -529,17 +654,15 @@ export class SelectionPanel {
     // --------------------------------------------------
 
     updateStatus() {
-        const selection =
-            this.advancedSelectionManager.getSelection();
+        if (this.isDisposed) return;
+
+        const selection = this.advancedSelectionManager.getSelection();
 
         this.statusElement.textContent =
             `${selection.length} Bauteile ausgewählt`;
 
-        const isolationActive =
-            this.isolationManager.isIsolating();
-
         this.isolationStatusElement.textContent =
-            isolationActive
+            this.isolationManager.isIsolating()
                 ? 'Isolation ist aktiv'
                 : 'Isolation nicht aktiv';
     }
@@ -551,8 +674,17 @@ export class SelectionPanel {
     dispose() {
         if (this.isDisposed) return;
 
-        this.container.innerHTML = '';
+        if (
+            this.advancedSelectionManager.onSelectionChange &&
+            this.advancedSelectionManager.onSelectionChange !==
+                this.previousSelectionCallback
+        ) {
+            this.advancedSelectionManager.setOnSelectionChange(
+                this.previousSelectionCallback
+            );
+        }
 
+        this.container.innerHTML = '';
         this.isDisposed = true;
     }
 }

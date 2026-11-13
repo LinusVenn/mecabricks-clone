@@ -305,6 +305,7 @@ describe('ProjectSerializer', () => {
             const gm = {
                 clear:        () => {},
                 loadFromData: (data) => { loadedData = data; },
+                toData:       () => [],     // Wird für Backup-Snapshot in deserialize benötigt
             };
             // Gruppe muss auf existierende Brick-ID verweisen (Validator-Check)
             const bricks = [{
@@ -322,6 +323,7 @@ describe('ProjectSerializer', () => {
             const gm = {
                 clear:        () => { cleared = true; },
                 loadFromData: () => {},
+                toData:       () => [],     // Wird für Backup-Snapshot in deserialize benötigt
             };
             const data = { ...minimalValidData(), version: 2, groups: [] };
             serializer.deserialize(data, library, connectionManager, gm);
