@@ -41,6 +41,13 @@ export class AuthManager {
     /** Aktuell angemeldeter Benutzer oder null. */
     get currentUser()  { return this._user ? { ...this._user } : null; }
 
+    /**
+     * Aktuell angemeldeten Benutzer zurückgeben.
+     * Methoden-Form von `currentUser` für Aufrufer, die eine Funktion erwarten.
+     * @returns {{ id: string, email: string } | null}
+     */
+    getCurrentUser()   { return this.currentUser; }
+
     /** true, wenn ein Benutzer angemeldet ist. */
     get isLoggedIn()   { return this._user !== null; }
 

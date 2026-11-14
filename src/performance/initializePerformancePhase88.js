@@ -181,12 +181,12 @@ function _wrapAnimateLoop(sceneManager, performanceManager) {
     const originalAnimate = sceneManager.animate?.bind(sceneManager);
     if (!originalAnimate) return;
 
-    sceneManager.animate = function () {
+    sceneManager.animate = function (nowMs = 0) {
         if (!this.isAnimating) return;
 
-        requestAnimationFrame(() => this.animate());
+        requestAnimationFrame(ts => this.animate(ts));
 
-        performanceManager.beginFrame();
+        performanceManager.beginFrame(nowMs);
 
         this.controls?.update();
         this.renderer.render(this.scene, this.camera);

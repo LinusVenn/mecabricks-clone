@@ -72,7 +72,11 @@ export class PerformanceMonitor {
             const programs = info.programs ?? [];
             this._metrics.drawCalls  = render.calls      ?? 0;
             this._metrics.triangles  = render.triangles  ?? 0;
-            this._metrics.objects    = render.frame       ?? 0;
+            // Three.js liefert kein direktes „gerenderte Objekte"-Feld.
+            // render.frame ist der Gesamt-Frame-Zähler (falsch).
+            // Wir verwenden memory.geometries als besten verfügbaren Proxy,
+            // da jedes sichtbare Mesh eine Geometrie-Instanz belegt.
+            this._metrics.objects    = memory.geometries ?? 0;
             this._metrics.geometries = memory.geometries ?? 0;
             this._metrics.textures   = memory.textures   ?? 0;
             this._metrics.materials  = programs.length;

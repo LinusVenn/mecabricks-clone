@@ -44,12 +44,19 @@ describe('PartDefinitions', () => {
         }
     });
 
-    it('enthält genau 32 Bauteile', () => {
-        assert.strictEqual(Object.keys(PART_DEFINITIONS).length, 32);
+    it('enthält genau 50 Bauteile', () => {
+        assert.strictEqual(Object.keys(PART_DEFINITIONS).length, 50);
     });
 
     it('jede Definition hat ein gültiges geometry-Feld', () => {
-        const VALID = new Set(['brick', 'plate', 'tile', 'slope', 'technic', 'window']);
+        const VALID = new Set([
+            'brick', 'plate', 'tile', 'slope', 'technic', 'window',
+            'slope_inverted', 'slope_corner',
+            'plate_rail',
+            'brick_corner', 'brick_round', 'brick_grille',
+            'tile_round',
+            'technic_angular'
+        ]);
         for (const def of Object.values(PART_DEFINITIONS)) {
             assert.ok(VALID.has(def.geometry), `Unbekannte geometry "${def.geometry}" bei ${def.id}`);
         }

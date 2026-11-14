@@ -1,0 +1,19 @@
+0 Electric Plug (Type 1) Single with Hollow Pin (Complete)
+0 Name: 592c04.dat
+0 Author: Steffen [Steffen]
+0 !LDRAW_ORG Shortcut UPDATE 2026-10
+0 !LICENSE Licensed under CC BY 4.0 : see CAreadme.txt
+
+0 BFC CERTIFY CCW
+
+0 !CATEGORY Electric
+0 !KEYWORDS BrickLink 996ac01, Rebrickable 996ac01
+
+0 !HISTORY 2022-04-06 [Holly-Wood] Added intersections
+0 !HISTORY 2022-07-18 [PTadmin] Official Update 2022-04
+0 !HISTORY 2024-10-23 [Blechtaler] Removed intersections (fixed in the pin)
+0 !HISTORY 2026-10-26 [OrionP] Official Update 2026-10
+
+1 16 0 0 22 1 0 0 0 1 0 0 0 1 592.dat
+1 494 0 0 0 1 0 0 0 1 0 0 0 1 u9238.dat
+1 494 0 -6 17 .98163 0 -.19081 0 1 0 .19081 0 .98163 u9021.dat

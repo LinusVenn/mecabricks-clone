@@ -69,15 +69,11 @@ export class PerformanceManager {
 
         this.instanceManager = new InstanceManager(scene, library);
 
-        this.visibilityOptimizer = new VisibilityOptimizer(library);
+        this.visibilityOptimizer = new VisibilityOptimizer(camera, library);
 
         this.performanceMonitor = new PerformanceMonitor(renderer);
 
-        this.modelLoadingManager = new ModelLoadingManager({
-            library,
-            connectionManager,
-            groupManager,
-            componentLibrary,
+        this.modelLoadingManager = new ModelLoadingManager(library, {
             chunkSize: 50
         });
 
@@ -116,8 +112,8 @@ export class PerformanceManager {
      * Muss am Anfang jedes Frames (vor renderer.render()) aufgerufen
      * werden.
      */
-    beginFrame() {
-        this.performanceMonitor.beginFrame();
+    beginFrame(nowMs = 0) {
+        this.performanceMonitor.update(nowMs);
         this.visibilityOptimizer.update(this._camera);
 
         if (this._shadowOptimizationEnabled && this._shadowManager) {
@@ -137,7 +133,8 @@ export class PerformanceManager {
      * werden.
      */
     endFrame() {
-        this.performanceMonitor.endFrame();
+        // PerformanceMonitor wird in beginFrame() via update() aktualisiert.
+        // endFrame() bleibt als Hook für künftige Erweiterungen erhalten.
     }
 
 
@@ -222,7 +219,7 @@ export class PerformanceManager {
 
     /** @returns {{ fps, drawCalls, triangles, objects, geometries, textures, materials, loadTime }} */
     getMetrics() {
-        return { ...this.performanceMonitor.metrics };
+        return this.performanceMonitor.getMetrics();
     }
 
 
@@ -236,12 +233,14 @@ export class PerformanceManager {
      * @param {{ onProgress?, onComplete?, onError? }} [callbacks]
      */
     async loadChunked(projectData, callbacks = {}) {
-        this.performanceMonitor.startLoadTimer();
+        const _loadStart = performance.now();
 
         const wrappedCallbacks = {
             ...callbacks,
             onComplete: () => {
-                this.performanceMonitor.stopLoadTimer();
+                this.performanceMonitor.recordLoadTime(
+                    Math.round(performance.now() - _loadStart)
+                );
                 this.markSceneDirty();
                 if (this.instanceManager.enabled) {
                     this.instanceManager.rebuild();

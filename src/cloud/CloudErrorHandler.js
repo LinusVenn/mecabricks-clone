@@ -153,6 +153,13 @@ export class CloudErrorHandler {
                      userMessage: 'Serverfehler. Bitte versuche es später erneut.' };
         }
 
+        if (error?.code === CloudErrorCodes.INVALID_DATA ||
+            error?.message?.toLowerCase().includes('invalid') ||
+            error?.message?.toLowerCase().includes('ungültig')) {
+            return { ...base, code: CloudErrorCodes.INVALID_DATA,
+                     userMessage: 'Ungültige Projektdaten. Bitte überprüfe das Projekt und versuche es erneut.' };
+        }
+
         return { ...base, code: CloudErrorCodes.UNKNOWN,
                  userMessage: 'Ein unbekannter Fehler ist aufgetreten.' };
     }

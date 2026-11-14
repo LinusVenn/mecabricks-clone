@@ -253,18 +253,18 @@ describe('ProjectManager', () => {
 
     describe('loadProjectJSON()', () => {
 
-        it('stellt Projektinformationen wieder her', () => {
-            pm.loadProjectJSON(minimalProjectJSON('Geladenes Projekt'));
+        it('stellt Projektinformationen wieder her', async () => {
+            await pm.loadProjectJSON(minimalProjectJSON('Geladenes Projekt'));
             assert.strictEqual(pm.getProjectInfo().name, 'Geladenes Projekt');
         });
 
-        it('übernimmt die Projekt-ID aus dem JSON', () => {
-            pm.loadProjectJSON(minimalProjectJSON());
+        it('übernimmt die Projekt-ID aus dem JSON', async () => {
+            await pm.loadProjectJSON(minimalProjectJSON());
             assert.strictEqual(pm.getProjectInfo().id, 'imported-id');
         });
 
-        it('gibt die Projektinfo zurück', () => {
-            const info = pm.loadProjectJSON(minimalProjectJSON());
+        it('gibt die Projektinfo zurück', async () => {
+            const info = await pm.loadProjectJSON(minimalProjectJSON());
             assert.ok(info && typeof info.name === 'string');
         });
 
@@ -282,14 +282,14 @@ describe('ProjectManager', () => {
             assert.strictEqual(library.getCount(), 1);
         });
 
-        it('wirft bei syntaktisch ungültigem JSON', () => {
-            assert.throws(() => pm.loadProjectJSON('{kaputt}'));
+        it('wirft bei syntaktisch ungültigem JSON', async () => {
+            await assert.rejects(() => pm.loadProjectJSON('{kaputt}'));
         });
 
-        it('wirft bei falscher Formatkennung', () => {
+        it('wirft bei falscher Formatkennung', async () => {
             const bad = JSON.stringify({ format: 'falsch', version: 1,
                 project: { name: 'T' }, bricks: [], connections: [] });
-            assert.throws(() => pm.loadProjectJSON(bad));
+            await assert.rejects(() => pm.loadProjectJSON(bad));
         });
 
     });
@@ -315,8 +315,9 @@ describe('ProjectManager', () => {
                 name: 'projekt.json',
                 text: async () => minimalProjectJSON('Datei-Projekt'),
             };
+            // importProjectFile ruft intern das nun-asynchrone loadProjectJSON auf
             const info = await pm.importProjectFile(file);
-            assert.strictEqual(info.name, 'Datei-Projekt');
+            assert.strictEqual(info?.name ?? info, 'Datei-Projekt');
         });
 
         it('wirft bei ungültigem JSON-Inhalt', async () => {

@@ -1,5 +1,6 @@
 
 import { ProjectSerializer } from './ProjectSerializer.js';
+import { MechanicalConnectionManager } from '../connections/MechanicalConnectionManager.js';
 
 function _generateProjectId() {
     if (
@@ -18,12 +19,14 @@ export class ProjectManager {
         library,
         connectionManager,
         groupManager = null,
-        componentLibrary = null
+        componentLibrary = null,
+        mechanicalManager = null
     ) {
         this.library = library;
         this.connectionManager = connectionManager;
         this.groupManager = groupManager;
         this.componentLibrary = componentLibrary;
+        this.mechanicalManager = mechanicalManager;
 
         this.serializer = new ProjectSerializer();
 
@@ -43,6 +46,7 @@ export class ProjectManager {
         this.connectionManager.clear();
         this.groupManager?.clear();
         this.componentLibrary?.clear();
+        this.mechanicalManager?.clear();
 
         const trimmed = (
             typeof name === 'string'
@@ -89,7 +93,8 @@ export class ProjectManager {
             this.connectionManager,
             this.projectInfo,
             this.groupManager,
-            this.componentLibrary
+            this.componentLibrary,
+            this.mechanicalManager
         );
     }
 
@@ -124,7 +129,16 @@ export class ProjectManager {
      * Die Projektinformationen werden erst aktualisiert,
      * wenn das Deserialisieren vollständig erfolgreich war.
      */
-    loadProjectJSON(jsonString) {
+    /**
+     * Lädt ein Projekt aus einem JSON-String.
+     *
+     * Die Methode ist asynchron, da die Deserialisierung für LDraw-Bauteile
+     * externe Geometrien laden muss.
+     *
+     * @param {string} jsonString
+     * @returns {Promise<object>} Projektinformationen
+     */
+    async loadProjectJSON(jsonString) {
         if (typeof jsonString !== 'string') {
             throw new Error('Ungültiges Projektformat.');
         }
@@ -134,12 +148,14 @@ export class ProjectManager {
         const data = this.serializer.fromJSON(jsonString);
 
         // Die Deserialisierung ist transaktional.
-        const project = this.serializer.deserialize(
+        // await ist erforderlich, da _applyData LDraw-Geometrien asynchron lädt.
+        const project = await this.serializer.deserialize(
             data,
             this.library,
             this.connectionManager,
             this.groupManager,
-            this.componentLibrary
+            this.componentLibrary,
+            this.mechanicalManager
         );
 
         // Erst nach erfolgreichem Laden übernehmen.

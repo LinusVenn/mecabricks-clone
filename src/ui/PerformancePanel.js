@@ -98,7 +98,7 @@ export class PerformancePanel {
         const monToggle = this._makeCheckbox(
             monGroup,
             'Metriken anzeigen',
-            this._pm.performanceMonitor.isEnabled(),
+            this._pm.performanceMonitor.enabled,
             checked => {
                 if (checked) {
                     this._pm.enableMonitor();
@@ -115,7 +115,7 @@ export class PerformancePanel {
         this._metricsEl.style.fontSize    = '11px';
         this._metricsEl.style.width       = '100%';
         this._metricsEl.style.borderCollapse = 'collapse';
-        if (!this._pm.performanceMonitor.isEnabled()) {
+        if (!this._pm.performanceMonitor.enabled) {
             this._metricsEl.style.display = 'none';
         }
         monGroup.appendChild(this._metricsEl);
@@ -179,7 +179,7 @@ export class PerformancePanel {
 
     _startMetricsLoop() {
         const tick = () => {
-            if (this._pm.performanceMonitor.isEnabled()) {
+            if (this._pm.performanceMonitor.enabled) {
                 this._updateMetricsTable();
             }
             this._rafId = requestAnimationFrame(tick);

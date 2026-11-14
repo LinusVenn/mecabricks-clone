@@ -1,12 +1,13 @@
 
-import { PartCatalog } from '../library/PartCatalog.js';
+import { PartCatalog } from '../catalog/PartCatalog.js';
 
 // ========================================
 // Unterstützte Projektversionen
 // ========================================
 
 const SUPPORTED_FORMAT = 'mecabricks-clone';
-const SUPPORTED_VERSIONS = [1, 2, 3];
+const SUPPORTED_VERSIONS = [1, 2, 3, 4];
+const SUPPORTED_SOURCES = ['local', 'ldraw'];
 
 // ========================================
 // ProjectValidator
@@ -69,6 +70,7 @@ export class ProjectValidator {
 
         const brickIds = new Set();
 
+        let index = 0;
         for (const brick of data.bricks) {
 
             // Zusätzliche Prüfung: Eintrag muss ein Objekt sein.
@@ -99,6 +101,32 @@ export class ProjectValidator {
                 );
             }
 
+            // Optionales source-Feld: wenn vorhanden, muss es ein
+            // bekannter Wert aus SUPPORTED_SOURCES sein.
+            if (
+                brick.source !== undefined &&
+                !SUPPORTED_SOURCES.includes(brick.source)
+            ) {
+                throw new Error(
+                    `Ungültige Bauteilquelle "${brick.source}" ` +
+                    `bei Stein "${brick.id}". ` +
+                    `Erlaubte Werte: ${SUPPORTED_SOURCES.join(', ')}.`
+                );
+            }
+
+            // LDraw-Bauteile müssen eine nicht-leere ldrawPartNumber besitzen.
+            if (brick.source === 'ldraw') {
+                if (
+                    typeof brick.ldrawPartNumber !== 'string' ||
+                    !brick.ldrawPartNumber.trim()
+                ) {
+                    throw new Error(
+                        `LDraw-Stein "${brick.id}" hat keine gültige ` +
+                        `ldrawPartNumber.`
+                    );
+                }
+            }
+
             if (brickIds.has(brick.id)) {
                 throw new Error(
                     `Doppelte Stein-ID: "${brick.id}".`
@@ -117,6 +145,20 @@ export class ProjectValidator {
                 );
             }
 
+            // colorId ist optional (Phase E.3 – LDraw-Farb-ID)
+            if (brick.colorId !== undefined && brick.colorId !== null) {
+                if (!Number.isInteger(brick.colorId) || brick.colorId < 0) {
+                    throw new Error(`Bauteil ${index}: colorId muss eine nicht-negative ganze Zahl sein`);
+                }
+            }
+
+            // variantId ist optional (Phase E.5 – Variantenkennung)
+            if (brick.variantId !== undefined && brick.variantId !== null) {
+                if (typeof brick.variantId !== 'string' || brick.variantId.trim() === '') {
+                    throw new Error(`Bauteil ${index}: variantId muss eine nicht-leere Zeichenkette sein`);
+                }
+            }
+
             this._validateVector(
                 brick.position,
                 `Position von Stein "${brick.id}"`
@@ -126,6 +168,8 @@ export class ProjectValidator {
                 brick.rotation,
                 `Rotation von Stein "${brick.id}"`
             );
+
+            index++;
         }
 
         // ── 4. Verbindungsliste ──────────────────────────────
@@ -476,6 +520,36 @@ export class ProjectValidator {
                             `Verbindungsposition in Komponente "${component.name}"`
                         );
                     }
+                }
+            }
+        }
+
+        // ── 7. Mechanische Verbindungen (Phase F, optional) ──
+
+        if (data.mechanicalConnections !== undefined) {
+            if (!Array.isArray(data.mechanicalConnections)) {
+                throw new Error('mechanicalConnections muss ein Array sein');
+            }
+            const mechConnIds = new Set();
+            for (const [mcIdx, mc] of data.mechanicalConnections.entries()) {
+                if (typeof mc !== 'object' || mc === null || Array.isArray(mc)) {
+                    throw new Error(`mechanicalConnections[${mcIdx}]: muss ein Objekt sein`);
+                }
+                if (!mc.id || typeof mc.id !== 'string') {
+                    throw new Error(`mechanicalConnections[${mcIdx}]: id fehlt oder ungültig`);
+                }
+                if (mechConnIds.has(mc.id)) {
+                    throw new Error(`mechanicalConnections[${mcIdx}]: doppelte id '${mc.id}'`);
+                }
+                mechConnIds.add(mc.id);
+                if (!mc.type || typeof mc.type !== 'string') {
+                    throw new Error(`mechanicalConnections[${mcIdx}]: type fehlt oder ungültig`);
+                }
+                if (!mc.partA || typeof mc.partA !== 'string') {
+                    throw new Error(`mechanicalConnections[${mcIdx}]: partA fehlt`);
+                }
+                if (!mc.partB || typeof mc.partB !== 'string') {
+                    throw new Error(`mechanicalConnections[${mcIdx}]: partB fehlt`);
                 }
             }
         }

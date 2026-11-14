@@ -11,8 +11,8 @@ describe('PartCategories', () => {
         assert.ok(PART_CATEGORIES !== null);
     });
 
-    it('enthält genau 6 Kategorien', () => {
-        assert.strictEqual(Object.keys(PART_CATEGORIES).length, 6);
+    it('enthält genau 16 Kategorien', () => {
+        assert.strictEqual(Object.keys(PART_CATEGORIES).length, 16);
     });
 
     it('enthält die sechs erwarteten Schlüssel', () => {

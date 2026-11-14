@@ -206,6 +206,23 @@ export class EditorPanelManager {
             }
         } catch { /* ignore */ }
     }
+
+
+    // ------------------------------------------------------------------
+    // Aufräumen
+    // ------------------------------------------------------------------
+
+    /**
+     * Meldet alle Panels ab, löscht den persistierten Zustand und gibt
+     * interne Ressourcen frei.
+     */
+    dispose() {
+        if (this._persist) {
+            try { sessionStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+        }
+        this._registry.clear();
+        this._visible.clear();
+    }
 }
 
 

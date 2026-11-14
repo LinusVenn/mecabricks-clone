@@ -1,0 +1,1131 @@
+{
+  "schemaVersion": 1,
+  "description": "LEGO/LDraw Farbpalette – Offizielle Farb-IDs und Hex-Codes",
+  "colors": [
+    {
+      "id": 0,
+      "name": "Black",
+      "displayName": "Schwarz",
+      "hex": "#212121",
+      "family": "dark",
+      "ldrawColorId": 0,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.8,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 1,
+      "name": "Blue",
+      "displayName": "Blau",
+      "hex": "#0055BF",
+      "family": "blue",
+      "ldrawColorId": 1,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 2,
+      "name": "Green",
+      "displayName": "Grün",
+      "hex": "#257A3E",
+      "family": "green",
+      "ldrawColorId": 2,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 3,
+      "name": "Dark Turquoise",
+      "displayName": "Dunkel-Türkis",
+      "hex": "#00838F",
+      "family": "green",
+      "ldrawColorId": 3,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 4,
+      "name": "Red",
+      "displayName": "Rot",
+      "hex": "#C91A09",
+      "family": "red",
+      "ldrawColorId": 4,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 5,
+      "name": "Dark Pink",
+      "displayName": "Dunkel-Rosa",
+      "hex": "#C870A0",
+      "family": "pink",
+      "ldrawColorId": 5,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 6,
+      "name": "Brown",
+      "displayName": "Braun",
+      "hex": "#583927",
+      "family": "brown",
+      "ldrawColorId": 6,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.7,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 7,
+      "name": "Light Gray",
+      "displayName": "Hellgrau",
+      "hex": "#9BA19D",
+      "family": "gray",
+      "ldrawColorId": 7,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 8,
+      "name": "Dark Gray",
+      "displayName": "Dunkelgrau",
+      "hex": "#6D6E5C",
+      "family": "gray",
+      "ldrawColorId": 8,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 9,
+      "name": "Light Blue",
+      "displayName": "Hellblau",
+      "hex": "#B4D2E3",
+      "family": "blue",
+      "ldrawColorId": 9,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 10,
+      "name": "Bright Green",
+      "displayName": "Leuchtend Grün",
+      "hex": "#4B9F4A",
+      "family": "green",
+      "ldrawColorId": 10,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 11,
+      "name": "Light Turquoise",
+      "displayName": "Hell-Türkis",
+      "hex": "#55A5AF",
+      "family": "green",
+      "ldrawColorId": 11,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 12,
+      "name": "Salmon",
+      "displayName": "Lachs",
+      "hex": "#F2705E",
+      "family": "red",
+      "ldrawColorId": 12,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 13,
+      "name": "Pink",
+      "displayName": "Rosa",
+      "hex": "#FC97AC",
+      "family": "pink",
+      "ldrawColorId": 13,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 14,
+      "name": "Yellow",
+      "displayName": "Gelb",
+      "hex": "#F2CD37",
+      "family": "yellow",
+      "ldrawColorId": 14,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 15,
+      "name": "White",
+      "displayName": "Weiß",
+      "hex": "#FFFFFF",
+      "family": "white",
+      "ldrawColorId": 15,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.6,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 17,
+      "name": "Light Green",
+      "displayName": "Hellgrün",
+      "hex": "#C2DAB8",
+      "family": "green",
+      "ldrawColorId": 17,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 18,
+      "name": "Light Yellow",
+      "displayName": "Hellgelb",
+      "hex": "#FBE696",
+      "family": "yellow",
+      "ldrawColorId": 18,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 19,
+      "name": "Tan",
+      "displayName": "Beige",
+      "hex": "#E4CD9E",
+      "family": "brown",
+      "ldrawColorId": 19,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 22,
+      "name": "Purple",
+      "displayName": "Lila",
+      "hex": "#81007B",
+      "family": "purple",
+      "ldrawColorId": 22,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 23,
+      "name": "Blue Violet",
+      "displayName": "Blauviolett",
+      "hex": "#2032B0",
+      "family": "purple",
+      "ldrawColorId": 23,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 24,
+      "name": "Transparent",
+      "displayName": "Transparent",
+      "hex": "#EEEEEE",
+      "family": "transparent",
+      "ldrawColorId": 24,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 25,
+      "name": "Orange",
+      "displayName": "Orange",
+      "hex": "#FE8A18",
+      "family": "orange",
+      "ldrawColorId": 25,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 26,
+      "name": "Magenta",
+      "displayName": "Magenta",
+      "hex": "#923978",
+      "family": "pink",
+      "ldrawColorId": 26,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 27,
+      "name": "Lime",
+      "displayName": "Limette",
+      "hex": "#BBE90B",
+      "family": "green",
+      "ldrawColorId": 27,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 28,
+      "name": "Dark Tan",
+      "displayName": "Dunkel-Beige",
+      "hex": "#958A73",
+      "family": "brown",
+      "ldrawColorId": 28,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.7,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 29,
+      "name": "Bright Pink",
+      "displayName": "Leuchtend Rosa",
+      "hex": "#E4ADC8",
+      "family": "pink",
+      "ldrawColorId": 29,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 32,
+      "name": "Trans-Black",
+      "displayName": "Transparent-Schwarz",
+      "hex": "#635F52",
+      "family": "transparent",
+      "ldrawColorId": 32,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.15,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 33,
+      "name": "Trans-Dark Blue",
+      "displayName": "Transparent-Dunkelblau",
+      "hex": "#0020A0",
+      "family": "transparent",
+      "ldrawColorId": 33,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 34,
+      "name": "Trans-Green",
+      "displayName": "Transparent-Grün",
+      "hex": "#237841",
+      "family": "transparent",
+      "ldrawColorId": 34,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 35,
+      "name": "Trans-Bright Green",
+      "displayName": "Transparent-Leuchtend Grün",
+      "hex": "#C9E788",
+      "family": "transparent",
+      "ldrawColorId": 35,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 36,
+      "name": "Trans-Red",
+      "displayName": "Transparent-Rot",
+      "hex": "#C91A09",
+      "family": "transparent",
+      "ldrawColorId": 36,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 38,
+      "name": "Trans-Flame Orange",
+      "displayName": "Transparent-Flammenorange",
+      "hex": "#E96F01",
+      "family": "transparent",
+      "ldrawColorId": 38,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 40,
+      "name": "Trans-Clear",
+      "displayName": "Transparent-Klar",
+      "hex": "#FCFCFC",
+      "family": "transparent",
+      "ldrawColorId": 40,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.05,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.3
+      }
+    },
+    {
+      "id": 41,
+      "name": "Trans-Yellow",
+      "displayName": "Transparent-Gelb",
+      "hex": "#F5CD2F",
+      "family": "transparent",
+      "ldrawColorId": 41,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 44,
+      "name": "Trans-Purple",
+      "displayName": "Transparent-Lila",
+      "hex": "#A5A5CB",
+      "family": "transparent",
+      "ldrawColorId": 44,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 59,
+      "name": "Dark Red",
+      "displayName": "Dunkelrot",
+      "hex": "#720E0F",
+      "family": "red",
+      "ldrawColorId": 59,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.7,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 63,
+      "name": "Dark Blue",
+      "displayName": "Dunkelblau",
+      "hex": "#0A3463",
+      "family": "blue",
+      "ldrawColorId": 63,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.7,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 66,
+      "name": "Pearl Light Gray",
+      "displayName": "Perlmutt-Hellgrau",
+      "hex": "#9CA3A8",
+      "family": "metallic",
+      "ldrawColorId": 66,
+      "material": {
+        "type": "pearl",
+        "roughness": 0.3,
+        "metalness": 0.6,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 70,
+      "name": "Reddish Brown",
+      "displayName": "Rötlichbraun",
+      "hex": "#582A12",
+      "family": "brown",
+      "ldrawColorId": 70,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.7,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 71,
+      "name": "Light Bluish Gray",
+      "displayName": "Hell-Bläulichgrau",
+      "hex": "#A0A5A9",
+      "family": "gray",
+      "ldrawColorId": 71,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 72,
+      "name": "Dark Bluish Gray",
+      "displayName": "Dunkel-Bläulichgrau",
+      "hex": "#6C6E68",
+      "family": "gray",
+      "ldrawColorId": 72,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 73,
+      "name": "Medium Blue",
+      "displayName": "Mittelblau",
+      "hex": "#5C9DD1",
+      "family": "blue",
+      "ldrawColorId": 73,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 74,
+      "name": "Trans-Medium Blue",
+      "displayName": "Transparent-Mittelblau",
+      "hex": "#559AB7",
+      "family": "transparent",
+      "ldrawColorId": 74,
+      "material": {
+        "type": "transparent",
+        "roughness": 0.1,
+        "metalness": 0.0,
+        "transparent": true,
+        "opacity": 0.4
+      }
+    },
+    {
+      "id": 80,
+      "name": "Dark Green",
+      "displayName": "Dunkelgrün",
+      "hex": "#184632",
+      "family": "green",
+      "ldrawColorId": 80,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.7,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 84,
+      "name": "Medium Nougat",
+      "displayName": "Mittel-Nougat",
+      "hex": "#AA7D55",
+      "family": "brown",
+      "ldrawColorId": 84,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 85,
+      "name": "Medium Lilac",
+      "displayName": "Mittellila",
+      "hex": "#3F3691",
+      "family": "purple",
+      "ldrawColorId": 85,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 86,
+      "name": "Light Nougat",
+      "displayName": "Hell-Nougat",
+      "hex": "#F3CF9B",
+      "family": "brown",
+      "ldrawColorId": 86,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 87,
+      "name": "Pearl Dark Gray",
+      "displayName": "Perlmutt-Dunkelgrau",
+      "hex": "#575857",
+      "family": "metallic",
+      "ldrawColorId": 87,
+      "material": {
+        "type": "pearl",
+        "roughness": 0.3,
+        "metalness": 0.7,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 92,
+      "name": "Nougat",
+      "displayName": "Nougat",
+      "hex": "#D09168",
+      "family": "brown",
+      "ldrawColorId": 92,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 100,
+      "name": "Light Salmon",
+      "displayName": "Hell-Lachs",
+      "hex": "#FEBABD",
+      "family": "red",
+      "ldrawColorId": 100,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 110,
+      "name": "Violet",
+      "displayName": "Violett",
+      "hex": "#4354A3",
+      "family": "purple",
+      "ldrawColorId": 110,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 112,
+      "name": "Medium Violet",
+      "displayName": "Mittelviolett",
+      "hex": "#6874CA",
+      "family": "purple",
+      "ldrawColorId": 112,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 115,
+      "name": "Medium Lime",
+      "displayName": "Mittel-Limette",
+      "hex": "#C7D23C",
+      "family": "green",
+      "ldrawColorId": 115,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 117,
+      "name": "Glitter Trans-Clear",
+      "displayName": "Glitzer Transparent-Klar",
+      "hex": "#D9D9D9",
+      "family": "transparent",
+      "ldrawColorId": 117,
+      "material": {
+        "type": "glitter",
+        "roughness": 0.05,
+        "metalness": 0.4,
+        "transparent": true,
+        "opacity": 0.5
+      }
+    },
+    {
+      "id": 118,
+      "name": "Aqua",
+      "displayName": "Aqua",
+      "hex": "#B3D7D1",
+      "family": "green",
+      "ldrawColorId": 118,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 120,
+      "name": "Light Lime",
+      "displayName": "Hell-Limette",
+      "hex": "#D9E4A7",
+      "family": "green",
+      "ldrawColorId": 120,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 125,
+      "name": "Light Orange",
+      "displayName": "Hellorange",
+      "hex": "#F9BA61",
+      "family": "orange",
+      "ldrawColorId": 125,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 151,
+      "name": "Sand Blue",
+      "displayName": "Sandblau",
+      "hex": "#6074A1",
+      "family": "blue",
+      "ldrawColorId": 151,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.75,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 183,
+      "name": "Pearl White",
+      "displayName": "Perlmutt-Weiß",
+      "hex": "#F2F3F2",
+      "family": "metallic",
+      "ldrawColorId": 183,
+      "material": {
+        "type": "pearl",
+        "roughness": 0.25,
+        "metalness": 0.55,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 191,
+      "name": "Bright Light Orange",
+      "displayName": "Leuchtend Hellorange",
+      "hex": "#F8BB3D",
+      "family": "orange",
+      "ldrawColorId": 191,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 212,
+      "name": "Light Royal Blue",
+      "displayName": "Hell-Königsblau",
+      "hex": "#9FC3E9",
+      "family": "blue",
+      "ldrawColorId": 212,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 216,
+      "name": "Rust",
+      "displayName": "Rostrot",
+      "hex": "#872B17",
+      "family": "red",
+      "ldrawColorId": 216,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.8,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 226,
+      "name": "Bright Light Yellow",
+      "displayName": "Leuchtend Hellgelb",
+      "hex": "#FFF03A",
+      "family": "yellow",
+      "ldrawColorId": 226,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 232,
+      "name": "Sky Blue",
+      "displayName": "Himmelblau",
+      "hex": "#7DBFDD",
+      "family": "blue",
+      "ldrawColorId": 232,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 272,
+      "name": "Dark Royal Blue",
+      "displayName": "Dunkel-Königsblau",
+      "hex": "#0D69AB",
+      "family": "blue",
+      "ldrawColorId": 272,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 288,
+      "name": "Dark Green",
+      "displayName": "Dunkelgrün (Alt)",
+      "hex": "#184632",
+      "family": "green",
+      "ldrawColorId": 288,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.7,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 294,
+      "name": "Glow In Dark White",
+      "displayName": "Nachleuchtend Weiß",
+      "hex": "#D9D9C9",
+      "family": "white",
+      "ldrawColorId": 294,
+      "material": {
+        "type": "glow",
+        "roughness": 0.5,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 297,
+      "name": "Metallic Gold",
+      "displayName": "Metallisches Gold",
+      "hex": "#CC9C2B",
+      "family": "metallic",
+      "ldrawColorId": 297,
+      "material": {
+        "type": "metallic",
+        "roughness": 0.2,
+        "metalness": 0.9,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 312,
+      "name": "Medium Dark Flesh",
+      "displayName": "Mittel-Dunkelbeige",
+      "hex": "#CC702A",
+      "family": "brown",
+      "ldrawColorId": 312,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 334,
+      "name": "Chrome Gold",
+      "displayName": "Chromgold",
+      "hex": "#BBA53D",
+      "family": "metallic",
+      "ldrawColorId": 334,
+      "material": {
+        "type": "chrome",
+        "roughness": 0.1,
+        "metalness": 0.95,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 383,
+      "name": "Chrome Silver",
+      "displayName": "Chromsilber",
+      "hex": "#E0E0E0",
+      "family": "metallic",
+      "ldrawColorId": 383,
+      "material": {
+        "type": "chrome",
+        "roughness": 0.05,
+        "metalness": 0.95,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 378,
+      "name": "Sand Green",
+      "displayName": "Sandgrün",
+      "hex": "#A0BCAC",
+      "family": "green",
+      "ldrawColorId": 378,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.75,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 379,
+      "name": "Sand Blue",
+      "displayName": "Sandblau (Alt)",
+      "hex": "#597184",
+      "family": "blue",
+      "ldrawColorId": 379,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.75,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    },
+    {
+      "id": 462,
+      "name": "Bright Light Orange",
+      "displayName": "Leuchtend Hellorange (Alt)",
+      "hex": "#F9A44A",
+      "family": "orange",
+      "ldrawColorId": 462,
+      "material": {
+        "type": "plastic",
+        "roughness": 0.65,
+        "metalness": 0.0,
+        "transparent": false,
+        "opacity": 1.0
+      }
+    }
+  ]
+}

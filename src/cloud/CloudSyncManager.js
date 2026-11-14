@@ -58,6 +58,23 @@ export class CloudSyncManager {
 
         /** @type {boolean} */
         this._isDirty = false;
+
+        // ------------------------------------------------------------------
+        // Automatischer Retry nach Verbindungswiederherstellung
+        // ------------------------------------------------------------------
+        if (typeof window !== 'undefined') {
+            this._onOnline = () => {
+                // Wenn dirty und ein Cloud-Projekt verknüpft ist, erneut versuchen
+                if (this._isDirty && this._currentCloudProjectId &&
+                    this._auth.isLoggedIn) {
+                    this._status.setStatus(SyncStatus.MODIFIED);
+                    // Kein automatischer Upload – Benutzer wird über den geänderten
+                    // Status informiert und kann manuell speichern.
+                    // (Automatischer Upload würde Konflikte riskieren.)
+                }
+            };
+            window.addEventListener('online', this._onOnline);
+        }
     }
 
 
@@ -229,6 +246,21 @@ export class CloudSyncManager {
         if (typeof navigator !== 'undefined' && !navigator.onLine) {
             this._status.setStatus(SyncStatus.OFFLINE);
             throw new CloudError('Keine Internetverbindung.', 'OFFLINE');
+        }
+    }
+
+
+    // ------------------------------------------------------------------
+    // Aufräumen
+    // ------------------------------------------------------------------
+
+    /**
+     * Event-Listener entfernen und Ressourcen freigeben.
+     */
+    dispose() {
+        if (typeof window !== 'undefined' && this._onOnline) {
+            window.removeEventListener('online', this._onOnline);
+            this._onOnline = null;
         }
     }
 }

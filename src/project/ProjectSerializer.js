@@ -1,12 +1,14 @@
 
 import { ProjectValidator } from './ProjectValidator.js';
+import { MechanicalConnectionManager } from '../connections/MechanicalConnectionManager.js';
 
 export class ProjectSerializer {
 
-    constructor() {
+    constructor(options = {}) {
         this.format = 'mecabricks-clone';
-        this.version = 3;
+        this.version = 4;
         this.validator = new ProjectValidator();
+        this.geometryProvider = options.geometryProvider ?? null;
     }
 
     createProject(
@@ -37,7 +39,8 @@ export class ProjectSerializer {
             bricks: library.getAllData(),
             connections: connectionManager.toData(),
             groups: groupManager ? groupManager.toData() : [],
-            components: componentLibrary ? componentLibrary.toData() : []
+            components: componentLibrary ? componentLibrary.toData() : [],
+            mechanicalConnections: []
         };
     }
 
@@ -54,7 +57,8 @@ export class ProjectSerializer {
         connectionManager,
         projectInfo = {},
         groupManager = null,
-        componentLibrary = null
+        componentLibrary = null,
+        mechanicalManager = null
     ) {
         const projectData = this.createProject(
             library,
@@ -63,6 +67,11 @@ export class ProjectSerializer {
             groupManager,
             componentLibrary
         );
+
+        if (mechanicalManager) {
+            projectData.mechanicalConnections =
+                mechanicalManager?.toData()?.mechanicalConnections ?? [];
+        }
 
         return this.toJSON(projectData);
     }
@@ -91,21 +100,30 @@ export class ProjectSerializer {
      * Diese Methode verändert den Zustand der Manager.
      * Der Aufrufer muss deshalb bei Bedarf vorher eine
      * Sicherung des aktuellen Zustands erstellen.
+     *
+     * LDraw-Bauteile (source === 'ldraw') werden über den
+     * geometryProvider geladen, sofern dieser konfiguriert ist.
      */
-    _applyData(
+    async _applyData(
         data,
         library,
         connectionManager,
         groupManager = null,
-        componentLibrary = null
+        componentLibrary = null,
+        mechanicalManager = null
     ) {
         library.clear();
         connectionManager.clear();
         groupManager?.clear();
         componentLibrary?.clear();
+        mechanicalManager?.clear();
 
         for (const brickData of data.bricks) {
-            library.addBrickFromData(brickData);
+            if (brickData.source === 'ldraw' && this.geometryProvider) {
+                await library.addInstanceFromData(brickData, this.geometryProvider);
+            } else {
+                library.addBrickFromData(brickData);
+            }
         }
 
         connectionManager.loadFromData(
@@ -125,6 +143,14 @@ export class ProjectSerializer {
                 data.components ?? []
             );
         }
+
+        if (mechanicalManager && Array.isArray(data.mechanicalConnections)) {
+            const instanceIds = new Set(data.bricks.map(b => b.id));
+            mechanicalManager.loadFromData(
+                data.mechanicalConnections,
+                instanceIds
+            );
+        }
     }
 
     /**
@@ -132,13 +158,17 @@ export class ProjectSerializer {
      *
      * Falls das Laden fehlschlägt, wird versucht,
      * den vorherigen Zustand wiederherzustellen.
+     *
+     * Die Methode ist async, da LDraw-Bauteile asynchron
+     * über den geometryProvider geladen werden können.
      */
-    deserialize(
+    async deserialize(
         data,
         library,
         connectionManager,
         groupManager = null,
-        componentLibrary = null
+        componentLibrary = null,
+        mechanicalManager = null
     ) {
         // Zuerst die eingehenden Daten vollständig validieren.
         this.validate(data);
@@ -155,14 +185,20 @@ export class ProjectSerializer {
             componentLibrary
         );
 
+        if (mechanicalManager) {
+            backup.mechanicalConnections =
+                mechanicalManager?.toData()?.mechanicalConnections ?? [];
+        }
+
         try {
             // Neues Projekt laden.
-            this._applyData(
+            await this._applyData(
                 data,
                 library,
                 connectionManager,
                 groupManager,
-                componentLibrary
+                componentLibrary,
+                mechanicalManager
             );
 
         } catch (loadError) {
@@ -170,12 +206,13 @@ export class ProjectSerializer {
             try {
                 // Teilweise geladene Daten entfernen
                 // und vorherigen Zustand wiederherstellen.
-                this._applyData(
+                await this._applyData(
                     backup,
                     library,
                     connectionManager,
                     groupManager,
-                    componentLibrary
+                    componentLibrary,
+                    mechanicalManager
                 );
 
             } catch (restoreError) {

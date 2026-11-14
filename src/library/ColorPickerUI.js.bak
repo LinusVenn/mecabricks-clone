@@ -1,0 +1,570 @@
+/**
+ * ColorPickerUI – Farbauswahl-Komponente für die Teilepalette (Phase E.4)
+ *
+ * Erzeugt ein DOM-Element mit einem Farbrad / Farbpalette.
+ * Ermöglicht die Auswahl von Farben aus der ColorManager-Palette.
+ * Unterstützt Gruppenansicht nach Farbfamilie und Suche.
+ *
+ * Ereignisse (custom events auf dem container-Element):
+ *   'color-selected' → detail: { colorId: number, hex: string, color: ColorDefinition }
+ *   'color-hovered'  → detail: { colorId: number, hex: string }
+ */
+
+import { ColorManager } from '../catalog/colors/ColorManager.js';
+
+// ─── Konstanten ───────────────────────────────────────────────────────────────
+
+/** Definierte Reihenfolge der Farbfamilien in der Gruppenansicht. */
+const FAMILY_ORDER = [
+    'white',
+    'gray',
+    'dark',
+    'red',
+    'orange',
+    'yellow',
+    'green',
+    'blue',
+    'purple',
+    'pink',
+    'brown',
+    'transparent',
+    'metallic',
+];
+
+/** Lesbare deutsche Bezeichnungen für Farbfamilien. */
+const FAMILY_LABELS = {
+    white:       'Weiß',
+    gray:        'Grau',
+    dark:        'Dunkel',
+    red:         'Rot',
+    orange:      'Orange',
+    yellow:      'Gelb',
+    green:       'Grün',
+    blue:        'Blau',
+    purple:      'Lila',
+    pink:        'Pink',
+    brown:       'Braun',
+    transparent: 'Transparent',
+    metallic:    'Metallic',
+};
+
+/** Pixel-Größen der Swatches pro Option. */
+const SWATCH_SIZES = {
+    small:  16,
+    medium: 22,
+    large:  32,
+};
+
+/** Einmalig eingefügtes Stylesheet-Tag-ID. */
+const STYLE_ID = 'color-picker-ui-styles';
+
+// ─── CSS (wird einmalig in <head> eingefügt) ──────────────────────────────────
+
+const STYLES = `
+.cp-root {
+    font-family: sans-serif;
+    font-size: 12px;
+    color: #ddd;
+    user-select: none;
+}
+.cp-root[data-disabled="true"] {
+    opacity: 0.5;
+    pointer-events: none;
+}
+.cp-search-wrap {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    margin-bottom: 6px;
+}
+.cp-search-input {
+    flex: 1;
+    padding: 3px 6px;
+    border-radius: 3px;
+    border: 1px solid #555;
+    background: #2a2a2a;
+    color: #eee;
+    font-size: 12px;
+    outline: none;
+}
+.cp-search-input:focus {
+    border-color: #88aaff;
+}
+.cp-search-clear {
+    background: none;
+    border: none;
+    color: #aaa;
+    cursor: pointer;
+    font-size: 13px;
+    line-height: 1;
+    padding: 2px 4px;
+}
+.cp-search-clear:hover {
+    color: #fff;
+}
+.cp-family-section {
+    margin-bottom: 8px;
+}
+.cp-family-label {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #888;
+    margin-bottom: 3px;
+    padding-left: 1px;
+}
+.cp-swatch-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px;
+}
+.color-swatch {
+    display: inline-block;
+    border-radius: 2px;
+    border: 2px solid transparent;
+    cursor: pointer;
+    box-sizing: border-box;
+    flex-shrink: 0;
+    transition: transform 0.08s, border-color 0.08s;
+}
+.color-swatch:hover {
+    transform: scale(1.18);
+    border-color: #fff;
+    z-index: 1;
+    position: relative;
+}
+.color-swatch.selected {
+    border-color: #88aaff;
+    box-shadow: 0 0 0 1px #88aaff;
+    transform: scale(1.12);
+    position: relative;
+    z-index: 2;
+}
+.cp-empty {
+    color: #777;
+    font-style: italic;
+    padding: 4px 0;
+}
+`;
+
+/**
+ * Injects the shared stylesheet once into the document head.
+ * Safe to call multiple times.
+ */
+function ensureStyles() {
+    if (
+        typeof document === 'undefined' ||
+        document.getElementById(STYLE_ID)
+    ) {
+        return;
+    }
+
+    const style = document.createElement('style');
+    style.id = STYLE_ID;
+    style.textContent = STYLES;
+    document.head.appendChild(style);
+}
+
+// ─── Hauptklasse ──────────────────────────────────────────────────────────────
+
+export class ColorPickerUI {
+
+    /**
+     * @param {{
+     *   container:        HTMLElement,
+     *   colorManager?:    import('../catalog/colors/ColorManager.js').ColorManager | null,
+     *   selectedColorId?: number | null,
+     *   options?: {
+     *     showFamilyGroups?: boolean,
+     *     showSearch?:       boolean,
+     *     showTooltips?:     boolean,
+     *     swatchSize?:       'small'|'medium'|'large',
+     *     columns?:          number,
+     *   }
+     * }} config
+     */
+    constructor({
+        container,
+        colorManager = null,
+        selectedColorId = null,
+        options = {},
+    } = {}) {
+        if (!container) {
+            throw new Error(
+                'ColorPickerUI: container is required.'
+            );
+        }
+
+        this._container      = container;
+        this._colorManager   = colorManager ?? ColorManager.instance();
+        this._selectedColorId = (typeof selectedColorId === 'number')
+            ? selectedColorId
+            : null;
+
+        // Optionen mit Defaults auflösen
+        this._opts = {
+            showFamilyGroups: options.showFamilyGroups !== false,
+            showSearch:       options.showSearch === true,
+            showTooltips:     options.showTooltips !== false,
+            swatchSize:       options.swatchSize ?? 'medium',
+            columns:          typeof options.columns === 'number'
+                ? options.columns
+                : 8,
+        };
+
+        this._searchQuery = '';
+        this._enabled     = true;
+        this._root        = null;
+        this._mounted     = false;
+
+        /** @type {Map<number, HTMLElement>} colorId → swatch element */
+        this._swatchMap = new Map();
+    }
+
+    // ─── Öffentliche API ────────────────────────────────────────────────────
+
+    /**
+     * Rendert die Komponente in den container.
+     */
+    mount() {
+        if (this._mounted) return;
+
+        ensureStyles();
+
+        this._root = document.createElement('div');
+        this._root.className = 'cp-root';
+
+        if (!this._enabled) {
+            this._root.dataset.disabled = 'true';
+        }
+
+        this._container.appendChild(this._root);
+        this._mounted = true;
+
+        this._renderAll();
+    }
+
+    /**
+     * Entfernt die Komponente aus dem DOM und räumt Listener auf.
+     */
+    unmount() {
+        if (!this._mounted) return;
+
+        if (this._root && this._root.parentNode) {
+            this._root.parentNode.removeChild(this._root);
+        }
+
+        this._root     = null;
+        this._mounted  = false;
+        this._swatchMap.clear();
+    }
+
+    /**
+     * Wählt eine Farbe programmatisch aus.
+     * @param {number} colorId
+     */
+    selectColor(colorId) {
+        const color = this._colorManager.getColorById(colorId);
+        if (!color) return;
+
+        this._setSelected(colorId);
+        this._dispatchColorSelected(color);
+    }
+
+    /**
+     * Gibt die aktuell ausgewählte Farb-ID zurück.
+     * @returns {number|null}
+     */
+    getSelectedColorId() {
+        return this._selectedColorId;
+    }
+
+    /**
+     * Aktiviert oder deaktiviert die Komponente.
+     * @param {boolean} enabled
+     */
+    setEnabled(enabled) {
+        this._enabled = Boolean(enabled);
+
+        if (this._root) {
+            this._root.dataset.disabled = this._enabled ? 'false' : 'true';
+        }
+    }
+
+    /**
+     * Rendert die Komponente neu (z.B. nach Palettenänderung).
+     */
+    refresh() {
+        if (!this._mounted) return;
+        this._renderAll();
+    }
+
+    // ─── Internes Rendering ────────────────────────────────────────────────
+
+    /**
+     * Baut das gesamte innere DOM neu auf.
+     * @private
+     */
+    _renderAll() {
+        if (!this._root) return;
+
+        this._root.innerHTML = '';
+        this._swatchMap.clear();
+
+        // Suchfeld (optional)
+        if (this._opts.showSearch) {
+            this._root.appendChild(this._buildSearchBar());
+        }
+
+        // Farben aus dem Manager laden und ggf. nach Suche filtern
+        const allColors = this._colorManager.getAllColors();
+        const filtered  = this._filterColors(allColors, this._searchQuery);
+
+        if (filtered.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'cp-empty';
+            empty.textContent = 'Keine Farben gefunden.';
+            this._root.appendChild(empty);
+            return;
+        }
+
+        if (this._opts.showFamilyGroups) {
+            this._renderGrouped(filtered);
+        } else {
+            this._renderFlat(filtered);
+        }
+    }
+
+    /**
+     * Rendert Farben nach Farbfamilien gruppiert.
+     * @param {import('../catalog/colors/ColorDefinition.js').ColorDefinition[]} colors
+     * @private
+     */
+    _renderGrouped(colors) {
+        // Farben nach Familie aufteilen
+        const byFamily = new Map();
+
+        for (const color of colors) {
+            const family = color.family ?? 'other';
+
+            if (!byFamily.has(family)) {
+                byFamily.set(family, []);
+            }
+
+            byFamily.get(family).push(color);
+        }
+
+        // Definierte Reihenfolge verwenden, Rest anhängen
+        const orderedFamilies = [
+            ...FAMILY_ORDER.filter(f => byFamily.has(f)),
+            ...[...byFamily.keys()].filter(f => !FAMILY_ORDER.includes(f)).sort(),
+        ];
+
+        for (const family of orderedFamilies) {
+            const familyColors = byFamily.get(family);
+            if (!familyColors?.length) continue;
+
+            const section = document.createElement('div');
+            section.className = 'cp-family-section';
+
+            const label = document.createElement('div');
+            label.className = 'cp-family-label';
+            label.textContent = FAMILY_LABELS[family] ?? family;
+
+            const row = document.createElement('div');
+            row.className = 'cp-swatch-row';
+
+            for (const color of familyColors) {
+                row.appendChild(this._buildSwatch(color));
+            }
+
+            section.append(label, row);
+            this._root.appendChild(section);
+        }
+    }
+
+    /**
+     * Rendert alle Farben ohne Gruppierung in einem einzelnen Grid.
+     * @param {import('../catalog/colors/ColorDefinition.js').ColorDefinition[]} colors
+     * @private
+     */
+    _renderFlat(colors) {
+        const row = document.createElement('div');
+        row.className = 'cp-swatch-row';
+
+        for (const color of colors) {
+            row.appendChild(this._buildSwatch(color));
+        }
+
+        this._root.appendChild(row);
+    }
+
+    /**
+     * Erstellt einen einzelnen Farb-Swatch.
+     * @param {import('../catalog/colors/ColorDefinition.js').ColorDefinition} color
+     * @returns {HTMLElement}
+     * @private
+     */
+    _buildSwatch(color) {
+        const size = SWATCH_SIZES[this._opts.swatchSize] ?? SWATCH_SIZES.medium;
+
+        const swatch = document.createElement('div');
+        swatch.className = 'color-swatch';
+        swatch.style.width           = `${size}px`;
+        swatch.style.height          = `${size}px`;
+        swatch.style.backgroundColor = color.hex;
+        swatch.dataset.colorId       = String(color.id);
+
+        // Tooltip
+        if (this._opts.showTooltips) {
+            const nameDe = color.nameDe ?? color.name ?? '';
+            const nameEn = color.name ?? '';
+            const label  = nameDe && nameDe !== nameEn
+                ? `${nameDe} (${nameEn})`
+                : nameEn;
+
+            swatch.title = `${label} — ID ${color.id}`;
+        }
+
+        // Ausgewählt?
+        if (color.id === this._selectedColorId) {
+            swatch.classList.add('selected');
+        }
+
+        // Swatch in Map registrieren
+        this._swatchMap.set(color.id, swatch);
+
+        // Klick-Handler
+        swatch.addEventListener('click', () => {
+            if (!this._enabled) return;
+            this._setSelected(color.id);
+            this._dispatchColorSelected(color);
+        });
+
+        // Hover-Handler
+        swatch.addEventListener('mouseenter', () => {
+            if (!this._enabled) return;
+            this._container.dispatchEvent(
+                new CustomEvent('color-hovered', {
+                    bubbles: true,
+                    detail: {
+                        colorId: color.id,
+                        hex:     color.hex,
+                    },
+                })
+            );
+        });
+
+        return swatch;
+    }
+
+    /**
+     * Erstellt die Suchleiste.
+     * @returns {HTMLElement}
+     * @private
+     */
+    _buildSearchBar() {
+        const wrap = document.createElement('div');
+        wrap.className = 'cp-search-wrap';
+
+        const input = document.createElement('input');
+        input.type        = 'text';
+        input.className   = 'cp-search-input';
+        input.placeholder = 'Farbe suchen…';
+        input.value       = this._searchQuery;
+
+        input.addEventListener('input', () => {
+            this._searchQuery = input.value.trim().toLowerCase();
+            this._renderAll();
+
+            // Inputfeld erhalten (wird durch renderAll neu erstellt, daher
+            // nach dem Render den Cursor ans Ende setzen)
+            const newInput = this._root?.querySelector('.cp-search-input');
+            if (newInput) {
+                const len = newInput.value.length;
+                newInput.setSelectionRange(len, len);
+                newInput.focus();
+            }
+        });
+
+        const clearBtn = document.createElement('button');
+        clearBtn.type      = 'button';
+        clearBtn.className = 'cp-search-clear';
+        clearBtn.textContent = '✕';
+        clearBtn.title     = 'Suche zurücksetzen';
+
+        clearBtn.addEventListener('click', () => {
+            this._searchQuery = '';
+            this._renderAll();
+        });
+
+        wrap.append(input, clearBtn);
+        return wrap;
+    }
+
+    // ─── Hilfsmethoden ────────────────────────────────────────────────────
+
+    /**
+     * Filtert Farben anhand der Suchanfrage (Farbnamen und ID).
+     * @param {import('../catalog/colors/ColorDefinition.js').ColorDefinition[]} colors
+     * @param {string} query
+     * @returns {import('../catalog/colors/ColorDefinition.js').ColorDefinition[]}
+     * @private
+     */
+    _filterColors(colors, query) {
+        if (!query) return colors;
+
+        const q = query.toLowerCase();
+
+        return colors.filter(color => {
+            const nameDe = (color.nameDe ?? '').toLowerCase();
+            const nameEn = (color.name  ?? '').toLowerCase();
+            const idStr  = String(color.id);
+            const hexStr = (color.hex ?? '').toLowerCase();
+
+            return (
+                nameEn.includes(q) ||
+                nameDe.includes(q) ||
+                idStr.includes(q)  ||
+                hexStr.includes(q)
+            );
+        });
+    }
+
+    /**
+     * Setzt die interne Auswahl und aktualisiert CSS-Klassen.
+     * @param {number} colorId
+     * @private
+     */
+    _setSelected(colorId) {
+        // Alten Swatch deselektieren
+        if (this._selectedColorId !== null) {
+            const prev = this._swatchMap.get(this._selectedColorId);
+            prev?.classList.remove('selected');
+        }
+
+        this._selectedColorId = colorId;
+
+        // Neuen Swatch selektieren
+        const next = this._swatchMap.get(colorId);
+        next?.classList.add('selected');
+    }
+
+    /**
+     * Feuert das 'color-selected'-Ereignis auf dem Container.
+     * @param {import('../catalog/colors/ColorDefinition.js').ColorDefinition} color
+     * @private
+     */
+    _dispatchColorSelected(color) {
+        this._container.dispatchEvent(
+            new CustomEvent('color-selected', {
+                bubbles: true,
+                detail: {
+                    colorId: color.id,
+                    hex:     color.hex,
+                    color,
+                },
+            })
+        );
+    }
+}

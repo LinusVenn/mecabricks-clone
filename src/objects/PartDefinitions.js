@@ -403,5 +403,228 @@ export const PART_DEFINITIONS = {
         studs: false,
         description: 'Türrahmen, sechs Steine hoch',
         tags: ['tuer', 'tür', 'rahmen', 'wand', '1x4x6', 'eingang']
+    },
+
+
+    // ------------------------------------------------------------------
+    // Schrägsteine (slopes) – zusätzliche Varianten (Phase E.6)
+    // ------------------------------------------------------------------
+
+    slope_1x3: {
+        id: 'slope_1x3',
+        name: '1 x 3 Schrägstein',
+        category: 'slopes',
+        width: 3, depth: 1, height: BRICK_HEIGHT,
+        geometry: 'slope',
+        studs: false,
+        description: 'Schräger 1×3-Baustein',
+        tags: ['schräg', '1x3', 'dach']
+    },
+
+    slope_2x2_inverted: {
+        id: 'slope_2x2_inverted',
+        name: '2 x 2 Schrägstein invers',
+        category: 'slopes',
+        width: 2, depth: 2, height: BRICK_HEIGHT,
+        geometry: 'slope_inverted',
+        studs: true,
+        description: '2×2 invertierter Schrägstein mit Noppen',
+        tags: ['schräg', 'invers', '2x2']
+    },
+
+    slope_3x3_corner: {
+        id: 'slope_3x3_corner',
+        name: '3 x 3 Eckschrägstein',
+        category: 'slopes',
+        width: 3, depth: 3, height: BRICK_HEIGHT,
+        geometry: 'slope_corner',
+        studs: false,
+        description: '3×3-Eckschrägstein für Dachkonstruktionen',
+        tags: ['schräg', 'ecke', '3x3', 'dach']
+    },
+
+
+    // ------------------------------------------------------------------
+    // Platten (plates) – zusätzliche Varianten (Phase E.6)
+    // ------------------------------------------------------------------
+
+    plate_2x2_corner: {
+        id: 'plate_2x2_corner',
+        name: '2 x 2 Eckplatte',
+        category: 'plates',
+        width: 2, depth: 2, height: PLATE_HEIGHT,
+        geometry: 'plate',
+        studs: true,
+        description: 'L-förmige 2×2-Eckplatte',
+        tags: ['platte', 'ecke', '2x2', 'l-form']
+    },
+
+    plate_1x2_with_rail: {
+        id: 'plate_1x2_with_rail',
+        name: '1 x 2 Platte mit Schiene',
+        category: 'plates',
+        width: 2, depth: 1, height: PLATE_HEIGHT,
+        geometry: 'plate_rail',
+        studs: true,
+        description: '1×2-Platte mit seitlicher Schiene',
+        tags: ['platte', 'schiene', '1x2']
+    },
+
+    plate_3x3: {
+        id: 'plate_3x3',
+        name: '3 x 3 Platte',
+        category: 'plates',
+        width: 3, depth: 3, height: PLATE_HEIGHT,
+        geometry: 'plate',
+        studs: true,
+        description: 'Quadratische 3×3-Platte',
+        tags: ['platte', '3x3']
+    },
+
+
+    // ------------------------------------------------------------------
+    // Fliesen (tiles) – zusätzliche Varianten (Phase E.6)
+    // ------------------------------------------------------------------
+
+    tile_1x6: {
+        id: 'tile_1x6',
+        name: '1 x 6 Fliese',
+        category: 'tiles',
+        width: 6, depth: 1, height: PLATE_HEIGHT,
+        geometry: 'tile',
+        studs: false,
+        description: 'Lange glatte 1×6-Fliese ohne Noppen',
+        tags: ['fliese', 'glatt', '1x6']
+    },
+
+    tile_2x6: {
+        id: 'tile_2x6',
+        name: '2 x 6 Fliese',
+        category: 'tiles',
+        width: 6, depth: 2, height: PLATE_HEIGHT,
+        geometry: 'tile',
+        studs: false,
+        description: 'Glatte 2×6-Fliese ohne Noppen',
+        tags: ['fliese', 'glatt', '2x6']
+    },
+
+    tile_4x4: {
+        id: 'tile_4x4',
+        name: '4 x 4 Fliese',
+        category: 'tiles',
+        width: 4, depth: 4, height: PLATE_HEIGHT,
+        geometry: 'tile',
+        studs: false,
+        description: 'Große quadratische 4×4-Fliese ohne Noppen',
+        tags: ['fliese', 'glatt', '4x4']
+    },
+
+    tile_1x1_round: {
+        id: 'tile_1x1_round',
+        name: '1 x 1 Runde Fliese',
+        category: 'tiles',
+        width: 1, depth: 1, height: PLATE_HEIGHT,
+        geometry: 'tile_round',
+        studs: false,
+        description: 'Runde 1×1-Fliese ohne Noppen',
+        tags: ['fliese', 'glatt', 'rund', '1x1']
+    },
+
+
+    // ------------------------------------------------------------------
+    // Steine (bricks) – zusätzliche Varianten (Phase E.6)
+    // ------------------------------------------------------------------
+
+    brick_2x2_corner: {
+        id: 'brick_2x2_corner',
+        name: '2 x 2 Eckstein',
+        category: 'bricks',
+        width: 2, depth: 2, height: BRICK_HEIGHT,
+        geometry: 'brick_corner',
+        studs: true,
+        description: 'L-förmiger 2×2-Eckstein',
+        tags: ['stein', 'ecke', '2x2']
+    },
+
+    brick_1x1_round: {
+        id: 'brick_1x1_round',
+        name: '1 x 1 Rundstein',
+        category: 'bricks',
+        width: 1, depth: 1, height: BRICK_HEIGHT,
+        geometry: 'brick_round',
+        studs: true,
+        description: 'Zylindrischer 1×1-Rundstein',
+        tags: ['stein', 'rund', '1x1', 'säule']
+    },
+
+    brick_2x2_round: {
+        id: 'brick_2x2_round',
+        name: '2 x 2 Rundstein',
+        category: 'bricks',
+        width: 2, depth: 2, height: BRICK_HEIGHT,
+        geometry: 'brick_round',
+        studs: true,
+        description: 'Zylindrischer 2×2-Rundstein für Türme und Säulen',
+        tags: ['stein', 'rund', '2x2', 'turm']
+    },
+
+    brick_1x2_grille: {
+        id: 'brick_1x2_grille',
+        name: '1 x 2 Gitterstein',
+        category: 'bricks',
+        width: 2, depth: 1, height: BRICK_HEIGHT,
+        geometry: 'brick_grille',
+        studs: false,
+        description: '1×2-Stein mit Gittermuster',
+        tags: ['stein', 'gitter', '1x2', 'belüftung']
+    },
+
+
+    // ------------------------------------------------------------------
+    // Technic-Bauteile – zusätzliche Varianten (Phase E.6)
+    // ------------------------------------------------------------------
+
+    technic_beam_11: {
+        id: 'technic_beam_11',
+        name: '11er Technic-Balken',
+        category: 'technic',
+        width: 11, depth: 1, height: BRICK_HEIGHT,
+        geometry: 'technic',
+        studs: false,
+        description: 'Technic-Balken mit 11 Löchern',
+        tags: ['technic', 'balken', '11']
+    },
+
+    technic_beam_13: {
+        id: 'technic_beam_13',
+        name: '13er Technic-Balken',
+        category: 'technic',
+        width: 13, depth: 1, height: BRICK_HEIGHT,
+        geometry: 'technic',
+        studs: false,
+        description: 'Technic-Balken mit 13 Löchern',
+        tags: ['technic', 'balken', '13']
+    },
+
+    technic_angular_beam_3: {
+        id: 'technic_angular_beam_3',
+        name: '3er Technic-Winkelbalken',
+        category: 'technic',
+        width: 3, depth: 1, height: BRICK_HEIGHT,
+        geometry: 'technic_angular',
+        studs: false,
+        description: 'Technic-Winkelbalken 3×5',
+        tags: ['technic', 'winkelbalken', '3', 'winkel']
+    },
+
+    technic_liftarm_1x3: {
+        id: 'technic_liftarm_1x3',
+        name: '1 x 3 Technic-Hebearm',
+        category: 'technic',
+        width: 3, depth: 1, height: BRICK_HEIGHT,
+        geometry: 'technic',
+        studs: false,
+        description: 'Technic-Hebearm mit 3 Löchern',
+        tags: ['technic', 'hebearm', '1x3', 'liftarm']
     }
 };

@@ -188,9 +188,9 @@ describe('ProjectSerializer', () => {
 
     describe('deserialize()', () => {
 
-        it('gibt die Projektinfo zurück', () => {
+        it('gibt die Projektinfo zurück', async () => {
             const data = minimalValidData();
-            const info = serializer.deserialize(data, library, connectionManager);
+            const info = await serializer.deserialize(data, library, connectionManager);
             assert.strictEqual(info.name, 'Testprojekt');
         });
 
@@ -256,10 +256,10 @@ describe('ProjectSerializer', () => {
             assert.strictEqual(library.getCount(), 1);
         });
 
-        it('wirft für Daten die Validierung nicht bestehen', () => {
+        it('wirft für Daten die Validierung nicht bestehen', async () => {
             const bad = { format: 'x', version: 1, project: { name: 'T' },
                           bricks: [], connections: [] };
-            assert.throws(() => serializer.deserialize(bad, library, connectionManager));
+            await assert.rejects(() => serializer.deserialize(bad, library, connectionManager));
         });
 
     });

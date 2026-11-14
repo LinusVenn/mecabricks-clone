@@ -23,6 +23,13 @@ import { ComponentLibrary } from '../assemblies/ComponentLibrary.js';
 import { ComponentManager } from '../assemblies/ComponentManager.js';
 import { PrecisionManager } from '../precision/PrecisionManager.js';
 
+import { ColorManager } from '../catalog/colors/ColorManager.js';
+import { PartVariantManager } from '../catalog/variants/PartVariantManager.js';
+import { PartCategoryManager } from '../catalog/PartCategoryManager.js';
+import { ConnectionPointManager } from '../connections/ConnectionPointManager.js';
+import { ConnectionCompatibility } from '../connections/ConnectionCompatibility.js';
+import { MechanicalConnectionManager } from '../connections/MechanicalConnectionManager.js';
+import { BUILTIN_CONNECTION_POINT_DEFINITIONS } from '../connections/ConnectionPointDefinitions.js';
 
 export class Editor {
 
@@ -63,6 +70,10 @@ export class Editor {
         // PlacementManager benötigt Zugriff auf die History des Editors.
         // Der HistoryManager kann später zugewiesen werden.
         this.placementManager.editor = this;
+
+        // Phase F: Verbindungssysteme an PlacementManager übergeben
+        this.placementManager.connectionPointManager  = this.connectionPointManager;
+        this.placementManager.connectionCompatibility = this.connectionCompatibility;
 
         this.selectionManager = new SelectionManager(
             camera,
@@ -123,10 +134,23 @@ export class Editor {
 
         this.componentLibrary = new ComponentLibrary();
 
+        // Phase E/F: Singleton-Manager
+        this.colorManager    = ColorManager.instance();
+        this.variantManager  = PartVariantManager.instance();
+        this.categoryManager = new PartCategoryManager();
+
+        // Phase F: Verbindungssysteme
+        this.connectionPointManager  = ConnectionPointManager.instance();
+        this.connectionPointManager.loadBuiltinDefinitions(BUILTIN_CONNECTION_POINT_DEFINITIONS);
+        this.connectionCompatibility = new ConnectionCompatibility();
+        this.mechanicalManager       = MechanicalConnectionManager.instance();
+
         this.assemblyManager = new AssemblyManager(
             this.groupManager,
             this.library,
-            this.connectionManager
+            this.connectionManager,
+            null,
+            this.mechanicalManager
         );
 
         this.componentManager = new ComponentManager(
@@ -710,6 +734,10 @@ this.precisionManager = new PrecisionManager(this);
         this.selectionManager.clearSelection();
 
         this.precisionManager?.dispose();
+
+        // Phase F: Verbindungssysteme aufräumen
+        this.mechanicalManager?.clear?.();
+        this.connectionPointManager?.clear?.();
     }
 
     // -------------------------------------------------------------

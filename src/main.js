@@ -14,6 +14,9 @@ import { ProjectToolbar } from './ui/ProjectToolbar.js';
 import { GroupToolbar } from './ui/GroupToolbar.js';
 import { PartLibraryUI } from './library/PartLibraryUI.js';
 
+// Phase A: LDraw-Geometrieintegration
+import { LDrawManager } from './catalog/ldraw/LDrawManager.js';
+
 // Phase 7: Materialien und Rendering
 import { MaterialLibrary } from './materials/MaterialLibrary.js';
 import { MaterialManager } from './materials/MaterialManager.js';
@@ -51,12 +54,17 @@ import { initializePerformancePhase88 }
     from './performance/initializePerformancePhase88.js';
 
 // Phase 8.9: Gesamtintegration
-import { EditorPanelManager }    from './ui/EditorPanelManager.js';
+import { EditorPanelManager } from './ui/EditorPanelManager.js';
 import { EditorShortcutManager } from './ui/EditorShortcutManager.js';
-import { EditorErrorHandler }    from './core/EditorErrorHandler.js';
+import { EditorErrorHandler } from './core/EditorErrorHandler.js';
 
 // Phase 9: Benutzerkonten und Cloud-Speicherung
 import { initializeCloudPhase9 } from './cloud/initializeCloudPhase9.js';
+
+import { PartCatalog } from './library/PartCatalog.js';
+
+import { PartMappingManager } from './catalog/mapping/PartMappingManager.js';
+import { LDrawPartIndex } from './catalog/mapping/LDrawPartIndex.js';
 
 
 // ======================================================
@@ -99,6 +107,65 @@ if (
     );
 }
 
+
+// ======================================================
+// 2.1 PHASE A – LDraw-Manager initialisieren
+// ======================================================
+
+const ldrawManager = new LDrawManager({
+    baseUrl: '/ldraw/'
+});
+
+let ldrawInitialized = false;
+
+try {
+    await ldrawManager.initialize();
+
+    ldrawInitialized = true;
+
+    console.log('LDraw-Bibliothek erfolgreich initialisiert.');
+
+} catch (error) {
+    console.error(
+        'Die LDraw-Bibliothek konnte nicht initialisiert werden:',
+        error
+    );
+
+    console.warn(
+        'Die normale Editorfunktion bleibt verfügbar. ' +
+        'LDraw-Bauteile können erst nach erfolgreicher Initialisierung geladen werden.'
+    );
+}
+
+// ======================================================
+// 2.2 PHASE C – BRICKLINK-/LDRAW-MAPPING
+// ======================================================
+
+const partCatalog = PartCatalog.instance();
+
+const ldrawPartIndex = new LDrawPartIndex({
+    baseUrl: '/ldraw/',
+    manifestUrl: '/ldraw/parts-index.json'
+});
+
+const partMappingManager = new PartMappingManager({
+    catalog: partCatalog,
+    ldrawIndex: ldrawPartIndex
+});
+
+try {
+    await partMappingManager.initialize();
+
+    console.log(
+        'Phase C: Part-Mapping-System initialisiert.'
+    );
+
+} catch (error) {
+    console.error(
+        'Phase C: Mapping-System konnte nicht initialisiert werden:',
+        error
+    );
+}
 
 // ======================================================
 // 3. BAUTEILBIBLIOTHEK UND EDITOR
@@ -365,12 +432,10 @@ const historyManager = new HistoryManager(
 
         transformPanel.update();
 
-        // Phase 8.5: Präzisionspanel nach Undo/Redo aktualisieren.
         precisionPanel.update();
 
         updateAssemblyPanel();
 
-        // Phase 8.4: Filteroptionen nach Wiederherstellung aktualisieren.
         selectionFilter.updateOptions?.();
         selectionPanel.updateOptions();
         selectionPanel.updateStatus();
@@ -800,19 +865,10 @@ updateAssemblyPanel();
 // 14. PHASE 8.4 – ERWEITERTE AUSWAHL UND ISOLATION
 // ======================================================
 
-// ------------------------------------------------------
-// 14.1 Auswahlfilter
-// ------------------------------------------------------
-
 const selectionFilter = new SelectionFilter(
     library,
     groupManager
 );
-
-
-// ------------------------------------------------------
-// 14.2 Erweiterter Auswahlmanager
-// ------------------------------------------------------
 
 const advancedSelectionManager = new AdvancedSelectionManager({
     library,
@@ -822,21 +878,11 @@ const advancedSelectionManager = new AdvancedSelectionManager({
     selectionFilter
 });
 
-
-// ------------------------------------------------------
-// 14.3 Isolationsmanager
-// ------------------------------------------------------
-
 const isolationManager = new IsolationManager(
     sceneManager.scene,
     library,
     outlinerManager.visibilityManager
 );
-
-
-// ------------------------------------------------------
-// 14.4 Auswahlpanel
-// ------------------------------------------------------
 
 const selectionPanelContainer = document.getElementById(
     'selection-container'
@@ -859,8 +905,6 @@ editor.multiSelectionManager.onSelectionChanged = ids => {
     previousMultiSelectionCallback?.(ids);
 
     selectionPanel.updateStatus();
-
-    // Phase 8.5: Auswahländerung im Präzisionspanel anzeigen.
     precisionPanel.update();
 };
 
@@ -871,8 +915,6 @@ editor.selectionManager.onSelectionChanged = object => {
     previousSingleSelectionCallback?.(object);
 
     selectionPanel.updateStatus();
-
-    // Phase 8.5: Auswahländerung im Präzisionspanel anzeigen.
     precisionPanel.update();
 };
 
@@ -885,11 +927,6 @@ let syncingSelection = false;
 
 const selectionManager = editor.selectionManager;
 const multiSelectionManager = editor.multiSelectionManager;
-
-
-// ------------------------------------------------------
-// 15.1 Auswahl aus dem Outliner in den Editor übernehmen
-// ------------------------------------------------------
 
 outlinerManager.onSelectionChange = objects => {
     if (syncingSelection) return;
@@ -941,11 +978,6 @@ outlinerManager.onSelectionChange = objects => {
     }
 };
 
-
-// ------------------------------------------------------
-// 15.2 Einzelauswahl aus dem 3D-Fenster übernehmen
-// ------------------------------------------------------
-
 const previousSelectionChanged =
     selectionManager.onSelectionChanged;
 
@@ -983,11 +1015,6 @@ selectionManager.onSelectionChanged = object => {
         syncingSelection = false;
     }
 };
-
-
-// ------------------------------------------------------
-// 15.3 Mehrfachauswahl aus dem 3D-Fenster übernehmen
-// ------------------------------------------------------
 
 const previousMultiSelectionChanged =
     multiSelectionManager.onSelectionChanged;
@@ -1034,25 +1061,14 @@ multiSelectionManager.onSelectionChanged = ids => {
 
 const modelValidationPhase87 =
     initializeModelValidationPhase87({
-
         sidebar,
-
         library,
-
-        connectionManager:
-            editor.connectionManager,
-
-        collisionManager:
-            editor.collisionManager,
-
+        connectionManager: editor.connectionManager,
+        collisionManager: editor.collisionManager,
         groupManager,
-
         materialLibrary,
-
         componentLibrary,
-
         editor,
-
         outlinerManager
     });
 
@@ -1149,11 +1165,6 @@ editor.onGroupUIUpdate = (count, groupName) => {
     );
 };
 
-
-// ------------------------------------------------------
-// 19.1 Gruppeninformationen aktualisieren
-// ------------------------------------------------------
-
 function updateGroupToolbar() {
     const objects = outlinerManager.getSelection();
 
@@ -1176,11 +1187,6 @@ function updateGroupToolbar() {
         group?.name ?? null
     );
 }
-
-
-// ------------------------------------------------------
-// 19.2 Outliner-Ereignisse
-// ------------------------------------------------------
 
 outlinerManager.subscribe(event => {
     if (event.type === 'selection') {
@@ -1287,6 +1293,74 @@ const partLibraryUI = new PartLibraryUI(
 
 
 // ======================================================
+// 21.1 PHASE A – LDraw-TESTBAUTEILE LADEN
+// ======================================================
+
+/**
+ * Lädt ein einzelnes LDraw-Bauteil und fügt es direkt
+ * der Three.js-Szene hinzu.
+ *
+ * Diese Funktion dient zunächst ausschließlich zum
+ * Testen der LDraw-Geometrieintegration.
+ *
+ * Die geladenen Objekte werden noch nicht als Brick
+ * in der PartLibrary registriert.
+ *
+ * @param {string|number} partNumber LDraw-Teilenummer
+ * @returns {Promise<THREE.Object3D>}
+ */
+async function loadLDrawTestPart(partNumber = '3001') {
+    if (!ldrawInitialized) {
+        throw new Error(
+            'Der LDrawManager wurde nicht erfolgreich initialisiert.'
+        );
+    }
+
+    const normalizedPartNumber = String(partNumber)
+        .trim()
+        .toLowerCase();
+
+    if (!normalizedPartNumber) {
+        throw new Error(
+            'Es wurde keine gültige LDraw-Teilenummer angegeben.'
+        );
+    }
+
+    try {
+        const object = await ldrawManager.loadPart(
+            normalizedPartNumber
+        );
+
+        if (!object || !object.isObject3D) {
+            throw new Error(
+                `LDrawManager.loadPart("${normalizedPartNumber}") ` +
+                'hat kein gültiges Three.js-Object3D zurückgegeben.'
+            );
+        }
+
+        object.name = `LDraw Part ${normalizedPartNumber}`;
+
+        sceneManager.scene.add(object);
+
+        console.log(
+            `LDraw-Bauteil ${normalizedPartNumber} wurde zur Szene hinzugefügt.`,
+            object
+        );
+
+        return object;
+
+    } catch (error) {
+        console.error(
+            `LDraw-Bauteil ${normalizedPartNumber} konnte nicht geladen werden:`,
+            error
+        );
+
+        throw error;
+    }
+}
+
+
+// ======================================================
 // 22. SCHATTEN
 // ======================================================
 
@@ -1316,7 +1390,6 @@ function clearEditorSelection() {
 
     outlinerManager.clearSelection();
 
-    // Eine aktive Isolation vor dem Projektwechsel beenden.
     isolationManager.exitIsolation();
     outlinerManager.exitIsolation();
 
@@ -1327,7 +1400,6 @@ function clearEditorSelection() {
     selectionPanel.updateOptions();
     selectionPanel.updateStatus();
 
-    // Phase 8.5: Präzisionspanel nach dem Zurücksetzen aktualisieren.
     precisionPanel.update();
 }
 
@@ -1370,7 +1442,6 @@ async function loadInitialProject() {
         selectionPanel.updateOptions();
         selectionPanel.updateStatus();
 
-        // Phase 8.5: Nach dem Projektladen aktualisieren.
         precisionPanel.update();
 
     } catch (error) {
@@ -1433,7 +1504,6 @@ function createNewProject() {
         selectionPanel.updateOptions();
         selectionPanel.updateStatus();
 
-        // Phase 8.5: Nach dem Erstellen eines Projekts aktualisieren.
         precisionPanel.update();
 
         console.log('Neues Projekt erstellt.');
@@ -1483,7 +1553,6 @@ async function importProjectFile(file) {
     try {
         await projectManager.importProjectFile(file);
 
-        // Erst nach erfolgreichem Import den Editor aktualisieren.
         editor.selectionManager?.clearSelection?.();
 
         historyManager.initialize();
@@ -1501,7 +1570,6 @@ async function importProjectFile(file) {
         selectionPanel.updateOptions();
         selectionPanel.updateStatus();
 
-        // Phase 8.5: Nach dem Import aktualisieren.
         precisionPanel.update();
 
     } catch (error) {
@@ -1714,30 +1782,39 @@ window.modelValidator = modelValidator;
 window.validationPanel = validationPanel;
 window.modelValidationPhase87 = modelValidationPhase87;
 
+// Phase A: LDraw
+window.ldrawManager = ldrawManager;
+window.ldrawInitialized = ldrawInitialized;
+window.loadLDrawTestPart = loadLDrawTestPart;
+
+// Phase C: BrickLink-/LDraw-Mapping
+window.partCatalog = partCatalog;
+window.ldrawPartIndex = ldrawPartIndex;
+window.partMappingManager = partMappingManager;
+
 
 // ======================================================
-// 16.1 PHASE 8.8 – PERFORMANCEOPTIMIERUNG
+// 33. PHASE 8.8 – PERFORMANCEOPTIMIERUNG
 // ======================================================
-// (bereits oben mit await initializePerformancePhase88 ausgeführt)
 
 const phase88 = await initializePerformancePhase88({
     sidebar,
-    scene:    sceneManager.scene,
-    camera:   sceneManager.camera,
+    scene: sceneManager.scene,
+    camera: sceneManager.camera,
     renderer: sceneManager.renderer,
     library,
     sceneManager,
     shadowManager,
-    selectionManager:     editor.selectionManager,
+    selectionManager: editor.selectionManager,
     multiSelectionManager: editor.multiSelectionManager,
-    connectionManager:    editor.connectionManager,
+    connectionManager: editor.connectionManager,
     groupManager,
     componentLibrary
 });
 
 
 // ======================================================
-// 33. ÖFFENTLICHE PROJEKTFUNKTIONEN
+// 34. ÖFFENTLICHE PROJEKTFUNKTIONEN
 // ======================================================
 
 window.exportProject = exportProject;
@@ -1748,51 +1825,15 @@ window.deleteSavedProject = deleteSavedProject;
 
 
 // ======================================================
-// 36. PHASE 9 – BENUTZERKONTEN UND CLOUD-SPEICHERUNG
+// 35. PHASE 8.9 – GESAMTINTEGRATION
 // ======================================================
 
-const phase9 = await initializeCloudPhase9({
-    sidebar,
-    projectManager,
-    autoSaveManager,
-    historyManager,
-    editor,
-    panelManager:  window.panelManager  ?? null,
-    errorHandler:  window.errorHandler  ?? null,
-    onProjectLoaded: () => {
-        clearEditorSelection();
-        historyManager.initialize();
-        outlinerManager.refresh();
-        updateAssemblyPanel();
-        selectionFilter.updateOptions?.();
-        selectionPanel.updateOptions();
-        selectionPanel.updateStatus();
-        precisionPanel.update();
-        projectToolbar.updateProjectName(
-            projectManager.getProjectInfo().name
-        );
-    }
-});
-
-// Phase 9
-window.phase9              = phase9;
-window.authManager         = phase9.authManager;
-window.cloudProjectManager = phase9.cloudProjectManager;
-window.cloudSyncManager    = phase9.cloudSyncManager;
-window.syncStatusManager   = phase9.syncStatusManager;
-
-
-// ======================================================
-// 36. PHASE 8.9 – GESAMTINTEGRATION
-// ======================================================
-
-
-// --------------------------------------------------
-// 36.1 Zentraler Fehler-Handler
-// --------------------------------------------------
+// ------------------------------------------------------
+// 35.1 Zentraler Fehler-Handler
+// ------------------------------------------------------
 
 const editorErrorHandler = new EditorErrorHandler({
-    onError: (entry) => {
+    onError: entry => {
         console.warn(
             `[EditorErrorHandler] ${entry.context}:`,
             entry.message
@@ -1801,55 +1842,120 @@ const editorErrorHandler = new EditorErrorHandler({
 });
 
 
-// --------------------------------------------------
-// 36.2 Panel-Manager
-// --------------------------------------------------
+// ------------------------------------------------------
+// 35.2 Panel-Manager
+// ------------------------------------------------------
 
 const panelManager = new EditorPanelManager();
 
-// Alle Phase-8-Panels registrieren
 editorErrorHandler.try(() => {
-    panelManager.register('outliner',     outlinerPanel,
-        { container: document.getElementById('outliner-panel-container') });
+    panelManager.register(
+        'outliner',
+        outlinerPanel,
+        {
+            container: document.getElementById(
+                'outliner-panel-container'
+            )
+        }
+    );
 
-    panelManager.register('transform',   transformPanel,
-        { container: document.getElementById('transform-panel-container') });
+    panelManager.register(
+        'transform',
+        transformPanel,
+        {
+            container: document.getElementById(
+                'transform-panel-container'
+            )
+        }
+    );
 
-    panelManager.register('precision',   precisionPanel,
-        { container: document.getElementById('precision-panel-container') });
+    panelManager.register(
+        'precision',
+        precisionPanel,
+        {
+            container: document.getElementById(
+                'precision-panel-container'
+            )
+        }
+    );
 
-    panelManager.register('assembly',    assemblyPanel,
-        { container: document.getElementById('assembly-panel-container') });
+    panelManager.register(
+        'assembly',
+        assemblyPanel,
+        {
+            container: document.getElementById(
+                'assembly-panel-container'
+            )
+        }
+    );
 
-    panelManager.register('selection',   selectionPanel,
-        { container: document.getElementById('selection-container') });
+    panelManager.register(
+        'selection',
+        selectionPanel,
+        {
+            container: document.getElementById(
+                'selection-container'
+            )
+        }
+    );
 
-    panelManager.register('material',    materialPanel,
-        { container: document.getElementById('material-panel-container') });
+    panelManager.register(
+        'material',
+        materialPanel,
+        {
+            container: document.getElementById(
+                'material-panel-container'
+            )
+        }
+    );
 
-    panelManager.register('lighting',    lightingPanel,
-        { container: document.getElementById('lighting-panel-container') });
+    panelManager.register(
+        'lighting',
+        lightingPanel,
+        {
+            container: document.getElementById(
+                'lighting-panel-container'
+            )
+        }
+    );
 
-    panelManager.register('render',      renderPanel,
-        { container: document.getElementById('render-panel-container') });
+    panelManager.register(
+        'render',
+        renderPanel,
+        {
+            container: document.getElementById(
+                'render-panel-container'
+            )
+        }
+    );
 
     if (validationPanel) {
-        panelManager.register('validation', validationPanel);
+        panelManager.register(
+            'validation',
+            validationPanel
+        );
     }
 
     if (phase88?.panel) {
-        panelManager.register('performance', phase88.panel);
+        panelManager.register(
+            'performance',
+            phase88.panel
+        );
     }
 
     if (window.componentTemplatePanel) {
-        panelManager.register('components', window.componentTemplatePanel);
+        panelManager.register(
+            'components',
+            window.componentTemplatePanel
+        );
     }
+
 }, 'Phase 8.9 – Panel-Manager-Registrierung');
 
 
-// --------------------------------------------------
-// 36.3 Tastatursteuerung (neue Phase-8.9-Shortcuts)
-// --------------------------------------------------
+// ------------------------------------------------------
+// 35.3 Tastatursteuerung
+// ------------------------------------------------------
 
 const shortcutManager = new EditorShortcutManager(window);
 
@@ -1862,14 +1968,29 @@ shortcutManager.register({ key: 'f' }, () => {
 
     if (bricks.length > 0 || single) {
         sceneManager.controls?.update?.();
-        // Fokus via OrbitControls (wenn vorhanden)
-        if (typeof sceneManager.controls?.target?.set === 'function') {
+
+        if (
+            typeof sceneManager.controls?.target?.set === 'function'
+        ) {
             const targets = bricks.length > 0
-                ? bricks.map(b => b.group.position)
+                ? bricks.map(brick => brick.group.position)
                 : [single.position];
-            const cx = targets.reduce((s, p) => s + p.x, 0) / targets.length;
-            const cy = targets.reduce((s, p) => s + p.y, 0) / targets.length;
-            const cz = targets.reduce((s, p) => s + p.z, 0) / targets.length;
+
+            const cx = targets.reduce(
+                (sum, position) => sum + position.x,
+                0
+            ) / targets.length;
+
+            const cy = targets.reduce(
+                (sum, position) => sum + position.y,
+                0
+            ) / targets.length;
+
+            const cz = targets.reduce(
+                (sum, position) => sum + position.z,
+                0
+            ) / targets.length;
+
             sceneManager.controls.target.set(cx, cy, cz);
             sceneManager.controls.update();
         }
@@ -1877,70 +1998,85 @@ shortcutManager.register({ key: 'f' }, () => {
 });
 
 // Alle Bauteile auswählen (Ctrl + A)
-shortcutManager.register({ key: 'a', ctrl: true }, () => {
-    const all = library.getAll();
-    if (all.length === 0) return;
+shortcutManager.register(
+    { key: 'a', ctrl: true },
+    () => {
+        const all = library.getAll();
+        if (all.length === 0) return;
 
-    editor.multiSelectionManager.setSelection(all);
-    selectionPanel.updateStatus();
-    precisionPanel.update();
-});
+        editor.multiSelectionManager.setSelection(all);
+        selectionPanel.updateStatus();
+        precisionPanel.update();
+    }
+);
 
 // Gruppe erstellen (Ctrl + G)
-shortcutManager.register({ key: 'g', ctrl: true }, () => {
-    editor.groupSelected();
+shortcutManager.register(
+    { key: 'g', ctrl: true },
+    () => {
+        editor.groupSelected();
 
-    updateAssemblyPanel();
-    outlinerManager.refresh();
-    selectionPanel.updateOptions();
-    precisionPanel.update();
-});
+        updateAssemblyPanel();
+        outlinerManager.refresh();
+        selectionPanel.updateOptions();
+        precisionPanel.update();
+    }
+);
 
 // Gruppe auflösen (Ctrl + Shift + G)
-shortcutManager.register({ key: 'g', ctrl: true, shift: true }, () => {
-    editor.ungroupSelected();
+shortcutManager.register(
+    { key: 'g', ctrl: true, shift: true },
+    () => {
+        editor.ungroupSelected();
 
-    updateAssemblyPanel();
-    outlinerManager.refresh();
-    selectionPanel.updateOptions();
-    precisionPanel.update();
-});
+        updateAssemblyPanel();
+        outlinerManager.refresh();
+        selectionPanel.updateOptions();
+        precisionPanel.update();
+    }
+);
 
 // Verschieben-Modus (G)
-shortcutManager.register({ key: 'g' }, () => {
-    editor.transformManager.setMode('translate');
-    editor.groupTransformManager.setMode('translate');
-    transformPanel.update();
-});
+shortcutManager.register(
+    { key: 'g' },
+    () => {
+        editor.transformManager.setMode('translate');
+        editor.groupTransformManager.setMode('translate');
+        transformPanel.update();
+    }
+);
 
 // Drehen-Modus (R)
-shortcutManager.register({ key: 'r' }, () => {
-    editor.transformManager.setMode('rotate');
-    editor.groupTransformManager.setMode('rotate');
-    transformPanel.update();
-});
+shortcutManager.register(
+    { key: 'r' },
+    () => {
+        editor.transformManager.setMode('rotate');
+        editor.groupTransformManager.setMode('rotate');
+        transformPanel.update();
+    }
+);
 
-// Skalieren nicht nativ unterstützt; Hinweis im Konsolen-Log (S)
-shortcutManager.register({ key: 's' }, () => {
-    // Skalierung für Einzelbauteile ist in dieser Architektur
-    // nicht vorgesehen (Steine haben feste Maße). S aktiviert
-    // stattdessen den Rotationsmodus als sinnvollen Fallback.
-    editor.transformManager.setMode('rotate');
-    transformPanel.update();
-});
+// Skalieren nicht nativ unterstützt; S als Fallback
+shortcutManager.register(
+    { key: 's' },
+    () => {
+        editor.transformManager.setMode('rotate');
+        transformPanel.update();
+    }
+);
 
 
-// --------------------------------------------------
-// 36.4 Globale Zugriffspunkte (Phase 8.9)
-// --------------------------------------------------
+// ------------------------------------------------------
+// 35.4 Globale Zugriffspunkte
+// ------------------------------------------------------
 
 window.editorErrorHandler = editorErrorHandler;
-window.panelManager       = panelManager;
-window.shortcutManager    = shortcutManager;
+window.panelManager = panelManager;
+window.shortcutManager = shortcutManager;
 
 
 // ======================================================
-// 34. ÖFFENTLICHE PHASE-8.3-FUNKTIONEN
+// 36. ÖFFENTLICHE PHASE-8.3-FUNKTIONEN
 // ======================================================
 
 window.saveSelectedAsComponent = (name = null) => {
@@ -1988,7 +2124,7 @@ window.duplicateAssembly = (
 
 
 // ======================================================
-// 35. ÖFFENTLICHE PHASE-8.4-FUNKTIONEN
+// 37. ÖFFENTLICHE PHASE-8.4-FUNKTIONEN
 // ======================================================
 
 window.selectAllFiltered = criteria => {
@@ -2025,7 +2161,7 @@ window.exitSelectionIsolation = () => {
 
 
 // ======================================================
-// 36. ÖFFENTLICHE PHASE-8.5-FUNKTIONEN
+// 38. ÖFFENTLICHE PHASE-8.5-FUNKTIONEN
 // ======================================================
 
 window.updatePrecisionPanel = () => {
@@ -2034,7 +2170,7 @@ window.updatePrecisionPanel = () => {
 
 
 // ======================================================
-// 37. ÖFFENTLICHE PHASE-8.7-FUNKTIONEN
+// 39. ÖFFENTLICHE PHASE-8.7-FUNKTIONEN
 // ======================================================
 
 window.runModelValidation = () => {
@@ -2043,7 +2179,49 @@ window.runModelValidation = () => {
 
 
 // ======================================================
-// 38. INITIALISIERUNG
+// 40. PHASE 9 – BENUTZERKONTEN UND CLOUD-SPEICHERUNG
+// ======================================================
+
+const phase9 = await initializeCloudPhase9({
+    sidebar,
+    projectManager,
+    autoSaveManager,
+    historyManager,
+    editor,
+
+    // Phase 8.9 ist zu diesem Zeitpunkt bereits initialisiert.
+    panelManager,
+    errorHandler: editorErrorHandler,
+
+    onProjectLoaded: () => {
+        clearEditorSelection();
+
+        historyManager.initialize();
+
+        outlinerManager.refresh();
+        updateAssemblyPanel();
+
+        selectionFilter.updateOptions?.();
+        selectionPanel.updateOptions();
+        selectionPanel.updateStatus();
+
+        precisionPanel.update();
+
+        projectToolbar.updateProjectName(
+            projectManager.getProjectInfo().name
+        );
+    }
+});
+
+window.phase9 = phase9;
+window.authManager = phase9.authManager;
+window.cloudProjectManager = phase9.cloudProjectManager;
+window.cloudSyncManager = phase9.cloudSyncManager;
+window.syncStatusManager = phase9.syncStatusManager;
+
+
+// ======================================================
+// 41. INITIALISIERUNG
 // ======================================================
 
 await loadInitialProject();
@@ -2060,4 +2238,14 @@ console.log('Phase 8.4: Erweiterte Auswahl und Isolation.');
 console.log('Phase 8.5: Präzisionswerkzeuge.');
 console.log('Phase 8.6: Baugruppenbibliothek und Wiederverwendung.');
 console.log('Phase 8.7: Modellprüfung und Fehlererkennung.');
+console.log('Phase 8.8: Performanceoptimierung.');
+console.log('Phase 8.9: Gesamtintegration.');
+console.log('Phase 9: Benutzerkonten und Cloud-Speicherung.');
+
+if (ldrawInitialized) {
+    console.log('Phase A: LDraw-Geometrieintegration bereit.');
+} else {
+    console.warn('Phase A: LDraw ist nicht verfügbar.');
+}
+
 console.log('======================================');

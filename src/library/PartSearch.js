@@ -1,157 +1,195 @@
-
 import { PartCatalog } from './PartCatalog.js';
-
-// =====================================================================
-// PartSearch
-//
-// Suche und Filterung im Bauteilkatalog.
-//
-// Regeln:
-//   - Groß-/Kleinschreibung wird ignoriert (Suche immer lowercase).
-//   - Leerzeichen am Rand werden entfernt.
-//   - Teilbegriffe werden gefunden.
-//   - Leere Suche liefert alle Ergebnisse (nach optionalen Filtern).
-//   - Filter können kombiniert werden.
-// =====================================================================
+import { PART_DEFINITIONS } from '../objects/PartDefinitions.js';
 
 export class PartSearch {
 
-    constructor(catalog = null) {
-        // Erlaubt den Einsatz eines anderen Katalogs (z. B. in Tests)
-        this._catalog = catalog ?? PartCatalog.instance();
+    constructor(catalog = PartCatalog.instance()) {
+        this.catalog = catalog;
     }
 
+    // ---------------------------------------------------------
+    // Textsuche
+    // ---------------------------------------------------------
 
-    // ----------------------------------------------------------------
-    // Volltextsuche
-    // ----------------------------------------------------------------
+    search(query, pool = this.catalog.getAllParts()) {
+        const normalizedQuery = this._normalize(query);
 
-    /**
-     * Sucht Bauteile nach einem Textbegriff.
-     * Durchsucht id, name und tags.
-     *
-     * @param {string}   query   – Suchbegriff
-     * @param {object[]} [pool]  – Optional: Teilmenge der Bauteile
-     * @returns {object[]}
-     */
-    search(query, pool = null) {
-
-        const parts = pool ?? this._catalog.getAllParts();
-
-        const term = (query ?? '').trim().toLowerCase();
-
-        if (!term) return parts;
-
-        return parts.filter(part => this._matchesTerm(part, term));
-    }
-
-    _matchesTerm(part, term) {
-
-        if (part.id.toLowerCase().includes(term))   return true;
-        if (part.name.toLowerCase().includes(term)) return true;
-
-        if (Array.isArray(part.tags)) {
-            for (const tag of part.tags) {
-                if (tag.toLowerCase().includes(term)) return true;
-            }
+        if (!normalizedQuery) {
+            return [...pool];
         }
 
-        if (part.description &&
-            part.description.toLowerCase().includes(term)) {
-            return true;
-        }
+        const terms = normalizedQuery
+            .split(/\s+/)
+            .filter(Boolean);
 
-        return false;
-    }
+        return pool.filter(part => {
+            const searchable = this._getSearchText(part);
 
-
-    // ----------------------------------------------------------------
-    // Einzelne Filter
-    // ----------------------------------------------------------------
-
-    /**
-     * Filtert Bauteile nach Kategorie.
-     *
-     * @param {object[]} parts
-     * @param {string}   category  – z. B. "bricks", "" oder null = alle
-     * @returns {object[]}
-     */
-    filterByCategory(parts, category) {
-
-        if (!category) return parts;
-
-        return parts.filter(p => p.category === category);
-    }
-
-    /**
-     * Filtert Bauteile nach Abmessungen.
-     *
-     * width und/oder depth können null sein – dann wird diese Dimension
-     * nicht eingeschränkt.
-     *
-     * @param {object[]}    parts
-     * @param {number|null} width
-     * @param {number|null} depth
-     * @returns {object[]}
-     */
-    filterBySize(parts, width, depth) {
-
-        return parts.filter(p => {
-            const wOk = width == null || p.width === width || p.depth === width;
-            const dOk = depth == null || p.depth === depth || p.width === depth;
-            return wOk && dOk;
+            return terms.every(term =>
+                searchable.includes(term)
+            );
         });
     }
 
-    /**
-     * Filtert Bauteile nach Geometrietyp.
-     *
-     * @param {object[]} parts
-     * @param {string}   geometry  – z. B. "brick", "plate", "tile", "slope"
-     * @returns {object[]}
-     */
-    filterByGeometry(parts, geometry) {
-
-        if (!geometry) return parts;
-
-        return parts.filter(p => p.geometry === geometry);
+    _getSearchText(part) {
+        return [
+            part.id,
+            part.name,
+            part.description,
+            part.brickLinkId,
+            part.ldrawPartNumber,
+            part.category,
+            part.geometry,
+            part.geometryType,
+            ...(part.tags ?? []),
+            ...(part.aliases ?? [])
+        ]
+            .filter(value => value !== null && value !== undefined)
+            .join(' ')
+            .toLowerCase();
     }
 
+    _normalize(value) {
+        return String(value ?? '')
+            .trim()
+            .toLowerCase()
+            .normalize('NFKD')
+            .replace(/[\u0300-\u036f]/g, '');
+    }
 
-    // ----------------------------------------------------------------
-    // Kombinierter Filter (alle Kriterien auf einmal anwenden)
-    // ----------------------------------------------------------------
+    // ---------------------------------------------------------
+    // Kategorie
+    // ---------------------------------------------------------
 
-    /**
-     * Wendet Suche und alle optionalen Filter in einem Aufruf an.
-     *
-     * @param {object} options
-     * @param {string}      [options.query]    – Textsuche
-     * @param {string}      [options.category] – Kategorie-ID
-     * @param {number|null} [options.width]    – Breite in Noppen
-     * @param {number|null} [options.depth]    – Tiefe in Noppen
-     * @param {string}      [options.geometry] – Geometrietyp
-     * @returns {object[]}
-     */
-    filter({ query = '', category = '', width = null,
-              depth = null, geometry = '' } = {}) {
+    // Pool kommt als erstes Argument, damit man die Methoden
+    // mit einem vorher gefilterten Pool verketten kann.
 
-        let results = this._catalog.getAllParts();
+    filterByCategory(pool = this.catalog.getAllParts(), category) {
+        if (!category) return [...pool];
 
-        if (category) {
-            results = this.filterByCategory(results, category);
+        return pool.filter(part =>
+            part.category === category
+        );
+    }
+
+    // ---------------------------------------------------------
+    // Abmessungen
+    // ---------------------------------------------------------
+
+    filterBySize(
+        pool = this.catalog.getAllParts(),
+        width,
+        depth,
+        allowRotation = true
+    ) {
+        // null / undefined → Wildcard (Dimension wird nicht gefiltert)
+        const hasWidth = width !== null && width !== undefined;
+        const hasDepth = depth !== null && depth !== undefined;
+
+        if (!hasWidth && !hasDepth) {
+            return [...pool];
         }
 
-        if (query) {
-            results = this.search(query, results);
+        const targetWidth = hasWidth ? Number(width) : null;
+        const targetDepth = hasDepth ? Number(depth) : null;
+
+        // Ungültige numerische Werte → kein Ergebnis
+        if (hasWidth && !Number.isFinite(targetWidth)) return [];
+        if (hasDepth && !Number.isFinite(targetDepth)) return [];
+
+        return pool.filter(part => {
+            const matchWidth  = !hasWidth  || part.width === targetWidth;
+            const matchDepth  = !hasDepth  || part.depth === targetDepth;
+
+            const directMatch = matchWidth && matchDepth;
+
+            const rotatedMatch =
+                allowRotation &&
+                hasWidth && hasDepth &&
+                part.width === targetDepth &&
+                part.depth === targetWidth;
+
+            return directMatch || rotatedMatch;
+        });
+    }
+
+    // ---------------------------------------------------------
+    // Geometrie
+    // ---------------------------------------------------------
+
+    filterByGeometry(
+        pool = this.catalog.getAllParts(),
+        geometry
+    ) {
+        if (!geometry) return [...pool];
+
+        return pool.filter(part =>
+            part.geometry === geometry ||
+            part.geometryType === geometry
+        );
+    }
+
+    // ---------------------------------------------------------
+    // Platzierbarkeit
+    // ---------------------------------------------------------
+
+    isPlaceable(part) {
+        if (!part || part.placementSupported !== true) {
+            return false;
         }
 
-        if (width != null || depth != null) {
+        // Brick.js kann nur interne Definitionen erzeugen.
+        return Object.prototype.hasOwnProperty.call(
+            PART_DEFINITIONS,
+            part.id
+        );
+    }
+
+    // ---------------------------------------------------------
+    // Kombinierte Filterung
+    // ---------------------------------------------------------
+
+    filter(options = {}) {
+        const {
+            query = '',
+            category = '',
+            width = null,
+            depth = null,
+            geometry = '',
+
+            physicalOnly = false,
+            verifiedOnly = false,
+            placeableOnly = false
+        } = options;
+
+        let results = this.catalog.getAllParts();
+
+        results = this.search(query, results);
+
+        results = this.filterByCategory(results, category);
+
+        if (width !== null && depth !== null) {
             results = this.filterBySize(results, width, depth);
         }
 
-        if (geometry) {
-            results = this.filterByGeometry(results, geometry);
+        results = this.filterByGeometry(results, geometry);
+
+        if (physicalOnly) {
+            results = results.filter(part =>
+                part.isPhysical === true
+            );
+        }
+
+        if (verifiedOnly) {
+            results = results.filter(part =>
+                part.isVerified === true
+            );
+        }
+
+        if (placeableOnly) {
+            results = results.filter(part =>
+                this.isPlaceable(part)
+            );
         }
 
         return results;
