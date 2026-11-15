@@ -61,6 +61,17 @@ import { EditorErrorHandler } from './core/EditorErrorHandler.js';
 // Phase 9: Benutzerkonten und Cloud-Speicherung
 import { initializeCloudPhase9 } from './cloud/initializeCloudPhase9.js';
 
+// Phase J: Echtzeit-Kollaboration
+import { initializeCollaborationPhaseJ } from './collaboration/initializeCollaborationPhaseJ.js';
+
+// Phase K: Erweiterte Modellierungswerkzeuge
+import { initializeModelingPhaseK } from './modeling/initializeModelingPhaseK.js';
+import { ModelingToolsPanel } from './ui/ModelingToolsPanel.js';
+
+// ── Phase H: Export-System ────────────────────────────────────────────────────
+import { ExportManager } from './export/ExportManager.js';
+import { ExportPanel }   from './ui/ExportPanel.js';
+
 import { PartCatalog } from './library/PartCatalog.js';
 
 import { PartMappingManager } from './catalog/mapping/PartMappingManager.js';
@@ -106,6 +117,41 @@ if (
         'Die Phase-7-Manager wurden nicht vollständig initialisiert.'
     );
 }
+
+// ======================================================
+// 2.5 PHASE G – RENDER-LOOP MIT DELTA-TIME ERWEITERN
+// ======================================================
+
+// Delta-Time-Tracking für die Physik-Integration (Phase G).
+// Wir patchen SceneManager.animate(), bevor die Schleife startet,
+// damit der Physik-Schritt vor jedem Three.js-Render-Aufruf ausgeführt wird.
+let lastTime = performance.now();
+
+const _originalAnimate = sceneManager.animate.bind(sceneManager);
+
+sceneManager.animate = function () {
+    if (!this.isAnimating) {
+        return;
+    }
+
+    requestAnimationFrame(() => this.animate());
+
+    const now = performance.now();
+    const deltaTime = Math.min((now - lastTime) / 1000, 0.1);
+    lastTime = now;
+
+    // Phase G: Physik-Schritt (nur wenn initialisiert und Simulation läuft)
+    if (physicsReady && editor.physicsController?.isRunning) {
+        editor.physicsController.update(deltaTime);
+    }
+
+    this.controls.update();
+
+    this.renderer.render(
+        this.scene,
+        this.camera
+    );
+};
 
 
 // ======================================================
@@ -189,6 +235,24 @@ if (!assemblyManager || !componentLibrary || !componentManager) {
 
 editor.placementManager.editor = editor;
 
+// ======================================================
+// 3.1 PHASE G – PHYSIK-ENGINE INITIALISIEREN
+// ======================================================
+
+// Phase G: Physik-Engine asynchron initialisieren
+// Erfolgt im Hintergrund; Simulation erst verfügbar wenn resolved
+let physicsReady = false;
+
+editor.initPhysics().then(() => {
+    physicsReady = true;
+    console.log('[main] Physik bereit');
+    // Optional: Initialen Zustand für Reset speichern
+    editor.physicsController?.snapshotInitialState?.();
+}).catch(err => {
+    console.warn('[main] Physik-Initialisierung fehlgeschlagen:', err);
+});
+
+
 if (!editor.transformInputManager || !editor.transformGizmo) {
     throw new Error(
         'Die Phase-8.2-Transformationskomponenten wurden nicht vollständig initialisiert.'
@@ -214,7 +278,8 @@ const projectManager = new ProjectManager(
     library,
     editor.connectionManager,
     groupManager,
-    componentLibrary
+    componentLibrary,
+    editor.mechanicalManager   // Phase F/G: mechanische Verbindungen serializieren
 );
 
 const autoSaveManager = new AutoSaveManager(
@@ -446,7 +511,8 @@ const historyManager = new HistoryManager(
     },
 
     groupManager,
-    componentLibrary
+    componentLibrary,
+    editor.mechanicalManager   // Phase F/G: mechanische Verbindungen in Undo/Redo
 );
 
 editor.historyManager = historyManager;
@@ -2214,14 +2280,160 @@ const phase9 = await initializeCloudPhase9({
 });
 
 window.phase9 = phase9;
-window.authManager = phase9.authManager;
+window.authManager         = phase9.authManager;
 window.cloudProjectManager = phase9.cloudProjectManager;
-window.cloudSyncManager = phase9.cloudSyncManager;
-window.syncStatusManager = phase9.syncStatusManager;
+window.cloudSyncManager    = phase9.cloudSyncManager;
+window.syncStatusManager   = phase9.syncStatusManager;
+window.cloudAPI            = phase9.cloudAPI;
+window.sessionManager      = phase9.sessionManager;
 
 
 // ======================================================
-// 41. INITIALISIERUNG
+// 40.1 PHASE J – ECHTZEIT-KOLLABORATION
+// ======================================================
+
+let phaseJ = null;
+
+if (phase9.supabaseClient) {
+    try {
+        phaseJ = await initializeCollaborationPhaseJ({
+            supabaseClient:   phase9.supabaseClient,
+            authManager:      phase9.authManager,
+            projectManager,
+            cloudSyncManager: phase9.cloudSyncManager,
+            editor,
+            library,
+            connectionManager: editor.connectionManager,
+            groupManager,
+            assemblyManager,
+        });
+
+        window.collaborationManager = phaseJ.collaborationManager;
+        window.sharingManager       = phaseJ.sharingManager;
+        window.versionManager       = phaseJ.versionManager;
+        window.permissionManager    = phaseJ.permissionManager;
+        window.presenceManager      = phaseJ.presenceManager;
+
+        console.log('[main] Phase J: Kollaborations-System bereit.');
+    } catch (err) {
+        console.warn('[main] Phase J konnte nicht initialisiert werden:', err.message);
+    }
+} else {
+    console.info('[main] Phase J: Supabase nicht konfiguriert – Kollaboration deaktiviert.');
+}
+
+window.phaseJ = phaseJ;
+
+// ======================================================
+// 40.2 PHASE K – ERWEITERTE MODELLIERUNGSWERKZEUGE
+// ======================================================
+
+const phaseK = initializeModelingPhaseK({
+    editor,
+    library,
+    groupManager,
+    assemblyManager,
+    connectionManager: editor.connectionManager,
+    historyManager,
+    isolationManager,
+    precisionAlignmentManager: editor.precisionManager.alignment,
+    precisionMeasurementManager: editor.precisionManager.measurement,
+    modelValidator,
+    collaborationManager: phaseJ?.collaborationManager ?? null
+});
+
+const modelingToolsContainer = document.getElementById('modeling-tools-container')
+    ?? createPanelContainer('modeling-tools-container', 'Modellierungswerkzeuge');
+
+const modelingToolsPanel = new ModelingToolsPanel({
+    container: modelingToolsContainer,
+    phaseK,
+    getSelection: () => advancedSelectionManager.getSelection(),
+    onModelChanged: () => {
+        outlinerManager.refresh();
+        transformPanel.update();
+        selectionPanel.updateStatus();
+        precisionPanel.update();
+        modelingToolsPanel.update();
+        autoSaveManager.scheduleSave();
+    }
+});
+
+window.phaseK = phaseK;
+window.modelingToolsPanel = modelingToolsPanel;
+window.transformManager = phaseK.transformManager;
+window.phaseKAlignmentManager = phaseK.alignmentManager;
+window.duplicationManager = phaseK.duplicationManager;
+window.patternManager = phaseK.patternManager;
+window.groupExtension = phaseK.groupExtension;
+window.assemblyEditingManager = phaseK.assemblyEditingManager;
+window.phaseKMeasurementManager = phaseK.measurementManager;
+window.phaseKModelValidationManager = phaseK.modelValidationManager;
+window.runModelValidation = () => phaseK.modelValidationManager.validateModel();
+
+const phaseKPreviousSelectionCallback = editor.multiSelectionManager.onSelectionChanged;
+editor.multiSelectionManager.onSelectionChanged = ids => {
+    phaseKPreviousSelectionCallback?.(ids);
+    modelingToolsPanel.update();
+};
+
+const phaseKPreviousSingleSelectionCallback = editor.selectionManager.onSelectionChanged;
+editor.selectionManager.onSelectionChanged = object => {
+    phaseKPreviousSingleSelectionCallback?.(object);
+    modelingToolsPanel.update();
+};
+
+
+// ======================================================
+// 41. PHASE H: EXPORT-SYSTEM INITIALISIEREN
+// ======================================================
+
+const exportManager = new ExportManager({
+    library,
+    partCatalog,
+    assemblyManager,
+    connectionManager: editor.connectionManager,
+    mechanicalManager: editor.mechanicalManager
+});
+
+// Attach ExportPanel to the sidebar (same pattern as all other panels)
+const exportPanelContainer = document.getElementById('export-panel-container')
+    ?? createPanelContainer('export-panel-container', 'Export');
+
+const exportPanel = new ExportPanel({
+    container:     exportPanelContainer,
+    exportManager
+});
+
+exportPanel.mount();
+
+// Wire up export-request custom events fired by ExportPanel
+exportPanelContainer.addEventListener('export-request', async (e) => {
+    const { format, options } = e.detail;
+
+    try {
+        exportPanel.setProgress(10, 'Export wird vorbereitet...');
+
+        const result = await exportManager.exportCurrentModel(format, options);
+
+        if (result.success) {
+            exportPanel.showSuccess(result.filename);
+        } else {
+            exportPanel.showError(result.errors.join(', '));
+        }
+    } catch (err) {
+        exportPanel.showError(`Exportfehler: ${err.message}`);
+        console.error('[Export]', err);
+    }
+});
+
+// Expose for DevTools / integration tests
+window.exportManager = exportManager;
+window.exportPanel   = exportPanel;
+
+
+// ======================================================
+// 42. INITIALISIERUNG
 // ======================================================
 
 await loadInitialProject();
@@ -2241,6 +2453,7 @@ console.log('Phase 8.7: Modellprüfung und Fehlererkennung.');
 console.log('Phase 8.8: Performanceoptimierung.');
 console.log('Phase 8.9: Gesamtintegration.');
 console.log('Phase 9: Benutzerkonten und Cloud-Speicherung.');
+console.log('Phase J: Echtzeit-Kollaboration' + (phaseJ ? ' bereit.' : ' – deaktiviert (kein Supabase).'));
 
 if (ldrawInitialized) {
     console.log('Phase A: LDraw-Geometrieintegration bereit.');

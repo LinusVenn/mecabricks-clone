@@ -67,6 +67,20 @@ export class LoginPanel {
         switchLink.style.marginTop = '8px';
         switchLink.addEventListener('click', e => { e.preventDefault(); this._onSwitch(); });
         this.container.appendChild(switchLink);
+
+        const forgotLink = document.createElement('a');
+        forgotLink.href           = '#';
+        forgotLink.textContent    = 'Passwort vergessen?';
+        forgotLink.style.display  = 'block';
+        forgotLink.style.marginTop = '4px';
+        forgotLink.style.fontSize  = '0.9em';
+        forgotLink.addEventListener('click', e => { e.preventDefault(); this._handleForgotPassword(); });
+        this.container.appendChild(forgotLink);
+
+        this._forgotSuccessEl = document.createElement('p');
+        this._forgotSuccessEl.style.color    = '#060';
+        this._forgotSuccessEl.style.fontSize = '0.9em';
+        this.container.appendChild(this._forgotSuccessEl);
     }
 
     _createInput(type, placeholder, autocomplete) {
@@ -101,6 +115,27 @@ export class LoginPanel {
             this._onSuccess();
         } catch (err) {
             this._showError(err.message ?? 'Anmeldung fehlgeschlagen.');
+        }
+    }
+
+    async _handleForgotPassword() {
+        const email = this._emailInput?.value?.trim() ?? '';
+        this._forgotSuccessEl.textContent = '';
+        this._showError('');
+
+        if (!email) {
+            this._showError('Bitte zuerst E-Mail-Adresse eingeben.');
+            return;
+        }
+
+        try {
+            await this._auth.resetPassword(email);
+            this._forgotSuccessEl.textContent =
+                'E-Mail zum Zurücksetzen des Passworts wurde versendet.';
+        } catch (err) {
+            // Keine Fehlermeldung ausgeben, die verrät ob die Adresse registriert ist.
+            this._forgotSuccessEl.textContent =
+                'Falls ein Konto mit dieser Adresse existiert, wurde eine E-Mail versendet.';
         }
     }
 

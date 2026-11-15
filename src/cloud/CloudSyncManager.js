@@ -35,6 +35,7 @@ export class CloudSyncManager {
      *   syncStatusManager:   import('./SyncStatusManager.js').SyncStatusManager
      *   authManager:         import('../auth/AuthManager.js').AuthManager
      *   cloudErrorHandler:   import('./CloudErrorHandler.js').CloudErrorHandler
+     *   autosaveDelay?:      number  – Ruhezeit in ms vor dem automatischen Speichern (Standard: 3000)
      * }} options
      */
     constructor({
@@ -43,6 +44,7 @@ export class CloudSyncManager {
         syncStatusManager,
         authManager,
         cloudErrorHandler,
+        autosaveDelay = 3000,
     }) {
         this._pm      = projectManager;
         this._cpm     = cloudProjectManager;
@@ -60,17 +62,29 @@ export class CloudSyncManager {
         this._isDirty = false;
 
         // ------------------------------------------------------------------
+        // Debounced Autosave
+        // ------------------------------------------------------------------
+
+        /** Wartezeit (ms) nach der letzten Änderung, bevor automatisch gespeichert wird.
+         *  Mindestens 100ms (außer in Tests – kein hartes Minimum, damit kurze Delays möglich sind). */
+        this._autosaveDelay = autosaveDelay;
+
+        /** setTimeout-Handle für den nächsten Autosave-Versuch (null = kein Timer aktiv). */
+        this._autosaveTimer = null;
+
+        /** true, während ein Speichervorgang läuft – verhindert parallele Autosave-Aufrufe. */
+        this._isSaving = false;
+
+        // ------------------------------------------------------------------
         // Automatischer Retry nach Verbindungswiederherstellung
         // ------------------------------------------------------------------
         if (typeof window !== 'undefined') {
             this._onOnline = () => {
-                // Wenn dirty und ein Cloud-Projekt verknüpft ist, erneut versuchen
+                // Wenn dirty und ein Cloud-Projekt verknüpft ist, Autosave neu planen
                 if (this._isDirty && this._currentCloudProjectId &&
                     this._auth.isLoggedIn) {
                     this._status.setStatus(SyncStatus.MODIFIED);
-                    // Kein automatischer Upload – Benutzer wird über den geänderten
-                    // Status informiert und kann manuell speichern.
-                    // (Automatischer Upload würde Konflikte riskieren.)
+                    this.scheduleAutoSave();
                 }
             };
             window.addEventListener('online', this._onOnline);
@@ -95,6 +109,8 @@ export class CloudSyncManager {
     /**
      * Lokales Projekt als unsynchronisiert markieren.
      * Wird von AutoSaveManager oder nach Änderungen aufgerufen.
+     * Löst automatisch einen verzögerten Speichervorgang aus, wenn ein
+     * Cloud-Projekt verknüpft ist und der Benutzer angemeldet ist.
      */
     markDirty() {
         this._isDirty = true;
@@ -105,6 +121,68 @@ export class CloudSyncManager {
                     : SyncStatus.LOCAL_ONLY
             );
         }
+        // Autosave nur auslösen wenn Cloud-Projekt verknüpft
+        if (this._currentCloudProjectId && this._auth.isLoggedIn) {
+            this.scheduleAutoSave();
+        }
+    }
+
+
+    /**
+     * Geplanten Autosave-Timer abbrechen.
+     * Verhindert den nächsten automatischen Speichervorgang ohne den Dirty-Status zu ändern.
+     */
+    cancelAutoSave() {
+        if (this._autosaveTimer !== null) {
+            clearTimeout(this._autosaveTimer);
+            this._autosaveTimer = null;
+        }
+    }
+
+
+    /**
+     * Verzögerten Autosave planen (Debounce).
+     *
+     * Ablauf:
+     *   1. Bestehenden Timer zurücksetzen (weitere Änderungen verschieben den Speicherauftrag).
+     *   2. Nach _autosaveDelay ms wird saveToCloud() ausgeführt.
+     *   3. Läuft bereits ein Speichervorgang, wird der Timer erneut geplant.
+     *   4. Nur wenn Cloud-Projekt verknüpft und Benutzer angemeldet.
+     */
+    scheduleAutoSave() {
+        if (!this._currentCloudProjectId || !this._auth.isLoggedIn) return;
+
+        // Bestehenden Timer zurücksetzen (Debounce)
+        if (this._autosaveTimer !== null) {
+            clearTimeout(this._autosaveTimer);
+            this._autosaveTimer = null;
+        }
+
+        this._autosaveTimer = setTimeout(async () => {
+            this._autosaveTimer = null;
+
+            // Kein paralleler Speichervorgang
+            if (this._isSaving) {
+                // Nochmals planen – nach aktuellem Speichervorgang erneut prüfen
+                this._autosaveTimer = setTimeout(() => {
+                    if (this._isDirty) this.scheduleAutoSave();
+                }, this._autosaveDelay);
+                return;
+            }
+
+            // Nur speichern wenn tatsächlich Änderungen vorliegen
+            if (!this._isDirty) return;
+
+            try {
+                this._isSaving = true;
+                await this.saveToCloud();
+            } catch (err) {
+                // Fehler wurden bereits in saveToCloud() behandelt und im Status gesetzt
+                // Für den Autosave kein weiteres throw – lokales Modell bleibt erhalten
+            } finally {
+                this._isSaving = false;
+            }
+        }, this._autosaveDelay);
     }
 
 
@@ -212,12 +290,18 @@ export class CloudSyncManager {
 
     /**
      * Synchronisierungszustand zurücksetzen.
-     * Wird aufgerufen, wenn ein neues lokales Projekt erstellt wird.
+     * Wird aufgerufen, wenn ein neues lokales Projekt erstellt wird oder beim Abmelden.
+     * Bricht auch einen laufenden Autosave-Timer ab.
      */
     reset() {
+        if (this._autosaveTimer !== null) {
+            clearTimeout(this._autosaveTimer);
+            this._autosaveTimer = null;
+        }
         this._currentCloudProjectId = null;
         this._lastSyncedVersion     = null;
         this._isDirty               = false;
+        this._isSaving              = false;
         this._status.setStatus(SyncStatus.LOCAL_ONLY);
     }
 
@@ -258,6 +342,10 @@ export class CloudSyncManager {
      * Event-Listener entfernen und Ressourcen freigeben.
      */
     dispose() {
+        if (this._autosaveTimer !== null) {
+            clearTimeout(this._autosaveTimer);
+            this._autosaveTimer = null;
+        }
         if (typeof window !== 'undefined' && this._onOnline) {
             window.removeEventListener('online', this._onOnline);
             this._onOnline = null;

@@ -314,6 +314,7 @@ export class PartInstance {
             color:    this._color,
             position: { x: pos.x, y: pos.y, z: pos.z },
             rotation: { x: rot.x, y: rot.y, z: rot.z },
+            scale:    { x: this.group.scale.x, y: this.group.scale.y, z: this.group.scale.z },
             source:   this._source,
             colorId:  this._colorId   // null ist erlaubt (Phase E.3)
         };

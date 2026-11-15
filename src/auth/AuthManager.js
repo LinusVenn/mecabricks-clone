@@ -56,11 +56,12 @@ export class AuthManager {
      * Neuen Benutzer registrieren.
      * @param {string} email
      * @param {string} password
+     * @param {{ displayName?: string }} [options]
      * @returns {Promise<{ id: string, email: string }>}
      */
-    async register(email, password) {
+    async register(email, password, options = {}) {
         this._validateCredentials(email, password);
-        return await this._service.register(email, password);
+        return await this._service.register(email, password, options);
     }
 
 
@@ -96,6 +97,15 @@ export class AuthManager {
             throw new AuthError('Ungültige E-Mail-Adresse.', AuthErrorCodes.UNKNOWN);
         }
         return await this._service.resetPassword(email);
+    }
+
+
+    /**
+     * Eigenes Konto löschen.
+     * @returns {Promise<void>}
+     */
+    async deleteAccount() {
+        return await this._service.deleteAccount();
     }
 
 

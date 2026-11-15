@@ -37,8 +37,12 @@ export class SupabaseAuthService extends AuthService {
     }
 
 
-    async register(email, password) {
-        const { data, error } = await this._client.auth.signUp({ email, password });
+    async register(email, password, options = {}) {
+        const signUpOptions = { email, password };
+        if (options.displayName) {
+            signUpOptions.options = { data: { display_name: options.displayName } };
+        }
+        const { data, error } = await this._client.auth.signUp(signUpOptions);
         if (error) throw this._mapError(error);
         return data.user ? { id: data.user.id, email: data.user.email } : null;
     }
@@ -72,6 +76,32 @@ export class SupabaseAuthService extends AuthService {
     onAuthStateChange(callback) {
         this._listeners.add(callback);
         return () => this._listeners.delete(callback);
+    }
+
+
+    /**
+     * Eigenes Konto löschen.
+     * Supabase erfordert für self-deletion die Edge Function „delete-user".
+     * Falls diese nicht konfiguriert ist, wird ein verständlicher Fehler geworfen.
+     */
+    async deleteAccount() {
+        // Supabase v2: auth.admin.deleteUser() benötigt service_role → nur serverseitig.
+        // Browser-seitig: Supabase bietet keine direkte deleteUser-Methode für den Client.
+        // Falls eine Edge Function „delete-user" deployed ist, kann sie hier aufgerufen werden:
+        try {
+            const { error } = await this._client.functions.invoke('delete-user');
+            if (error) throw error;
+        } catch (err) {
+            // Edge Function nicht vorhanden oder Fehler
+            const msg = err?.message ?? '';
+            if (msg.includes('FunctionsFetchError') || msg.includes('not found') || msg.includes('404')) {
+                throw new Error(
+                    'Kontolöschung erfordert eine serverseitige Supabase Edge Function (delete-user). ' +
+                    'Bitte konfiguriere diese oder wende dich an den Support.'
+                );
+            }
+            throw err;
+        }
     }
 
 

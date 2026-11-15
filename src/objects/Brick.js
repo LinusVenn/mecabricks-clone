@@ -356,6 +356,11 @@ export class Brick {
                 x: this.group.rotation.x,
                 y: this.group.rotation.y,
                 z: this.group.rotation.z
+            },
+            scale: {
+                x: this.group.scale.x,
+                y: this.group.scale.y,
+                z: this.group.scale.z
             }
         };
     }

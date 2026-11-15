@@ -38,8 +38,11 @@ export class CloudProjectPanel {
         // Aktualisieren wenn Benutzer sich an-/abmeldet
         this._auth.subscribe(() => this.refresh());
 
-        // Synchronisierungsstatus anzeigen
-        this._status.subscribe((status) => this._updateSyncBadge(status));
+        // Synchronisierungsstatus anzeigen und bei Konflikt Dialog öffnen
+        this._status.subscribe((status) => {
+            this._updateSyncBadge(status);
+            if (status === 'conflict') this._showConflictDialog();
+        });
     }
 
 
@@ -216,5 +219,101 @@ export class CloudProjectPanel {
         } catch (err) {
             alert(`Speichern fehlgeschlagen:\n${err.message}`);
         }
+    }
+
+
+    // ------------------------------------------------------------------
+    // Konfliktbehandlung (I.7)
+    // ------------------------------------------------------------------
+
+    /**
+     * Zeigt einen Dialog an, wenn ein Versionskonflikt erkannt wurde.
+     *
+     * Der Benutzer kann wählen:
+     *   1. Eigene Version überschreiben (Cloud-Version laden)
+     *   2. Eigene Version als neues Projekt speichern
+     *   3. Abbrechen (lokale Version behalten, nicht speichern)
+     */
+    _showConflictDialog() {
+        // Verhindert mehrfache Dialoge
+        if (this._conflictDialogOpen) return;
+        this._conflictDialogOpen = true;
+
+        const dialog = document.createElement('div');
+        dialog.className = 'cloud-conflict-dialog';
+        Object.assign(dialog.style, {
+            position:     'fixed',
+            top:          '50%',
+            left:         '50%',
+            transform:    'translate(-50%, -50%)',
+            background:   '#2a2a2a',
+            color:        '#eee',
+            border:       '1px solid #c00',
+            borderRadius: '6px',
+            padding:      '24px',
+            zIndex:       '9999',
+            maxWidth:     '420px',
+            width:        '90vw',
+            boxShadow:    '0 4px 24px rgba(0,0,0,0.5)',
+        });
+
+        dialog.innerHTML = `
+            <h3 style="margin:0 0 12px;color:#f66">⚠ Versionskonflikt</h3>
+            <p style="margin:0 0 16px;line-height:1.5">
+                Das Projekt wurde auf einem anderen Gerät oder in einem anderen
+                Browser-Tab geändert. Deine lokalen Änderungen können nicht
+                automatisch zusammengeführt werden.
+            </p>
+            <p style="margin:0 0 20px;font-size:0.9em;color:#aaa">
+                Was möchtest du tun?
+            </p>
+            <div style="display:flex;flex-direction:column;gap:8px">
+                <button id="conflict-load-server" style="padding:8px;cursor:pointer;background:#444;color:#eee;border:1px solid #666;border-radius:4px">
+                    Cloud-Version laden (lokale Änderungen verwerfen)
+                </button>
+                <button id="conflict-save-new" style="padding:8px;cursor:pointer;background:#444;color:#eee;border:1px solid #666;border-radius:4px">
+                    Eigene Version als neues Cloud-Projekt speichern
+                </button>
+                <button id="conflict-cancel" style="padding:8px;cursor:pointer;background:#333;color:#999;border:1px solid #555;border-radius:4px">
+                    Abbrechen (Änderungen bleiben lokal ungespeichert)
+                </button>
+            </div>
+        `;
+
+        document.body.appendChild(dialog);
+
+        const close = () => {
+            dialog.remove();
+            this._conflictDialogOpen = false;
+        };
+
+        dialog.querySelector('#conflict-load-server').addEventListener('click', async () => {
+            close();
+            const id = this._sync.currentCloudProjectId;
+            if (!id) return;
+            try {
+                await this._sync.loadFromCloud(id);
+                this._onProjectLoaded();
+            } catch (err) {
+                alert(`Cloud-Version konnte nicht geladen werden:\n${err.message}`);
+            }
+        });
+
+        dialog.querySelector('#conflict-save-new').addEventListener('click', async () => {
+            close();
+            // Cloud-Verknüpfung trennen, dann als neues Projekt speichern
+            this._sync.setCloudProject(null, null);
+            try {
+                await this._sync.saveToCloud();
+                await this.refresh();
+            } catch (err) {
+                alert(`Speichern als neues Projekt fehlgeschlagen:\n${err.message}`);
+            }
+        });
+
+        dialog.querySelector('#conflict-cancel').addEventListener('click', () => {
+            close();
+            // Kein Speichern – Benutzer behält lokale Version bewusst ungespeichert
+        });
     }
 }

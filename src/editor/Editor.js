@@ -31,6 +31,22 @@ import { ConnectionCompatibility } from '../connections/ConnectionCompatibility.
 import { MechanicalConnectionManager } from '../connections/MechanicalConnectionManager.js';
 import { BUILTIN_CONNECTION_POINT_DEFINITIONS } from '../connections/ConnectionPointDefinitions.js';
 
+// Phase G: Physik-Engine
+import { PhysicsEngineAdapter } from '../physics/PhysicsEngineAdapter.js';
+import { PhysicsWorld } from '../physics/PhysicsWorld.js';
+import { PhysicsBodyFactory, PHYSICS_BODY_TYPES } from '../physics/PhysicsBodyFactory.js';
+import { ColliderFactory } from '../physics/ColliderFactory.js';
+import { ColliderDefinitionResolver } from '../physics/ColliderDefinitionResolver.js';
+import { PhysicsMaterialManager } from '../physics/PhysicsMaterialManager.js';
+import { PhysicsJointFactory } from '../physics/PhysicsJointFactory.js';
+import { PhysicsConstraintManager } from '../physics/PhysicsConstraintManager.js';
+import { CollisionFilterManager } from '../physics/CollisionFilterManager.js';
+import { PhysicsContactManager } from '../physics/PhysicsContactManager.js';
+import { PhysicsSyncSystem } from '../physics/PhysicsSyncSystem.js';
+import { PhysicsSimulationController } from '../physics/PhysicsSimulationController.js';
+import { PhysicsDebugRenderer } from '../physics/PhysicsDebugRenderer.js';
+import { JointAnchorResolver } from '../physics/JointAnchorResolver.js';
+
 export class Editor {
 
     constructor(sceneManager, library) {
@@ -70,10 +86,6 @@ export class Editor {
         // PlacementManager benötigt Zugriff auf die History des Editors.
         // Der HistoryManager kann später zugewiesen werden.
         this.placementManager.editor = this;
-
-        // Phase F: Verbindungssysteme an PlacementManager übergeben
-        this.placementManager.connectionPointManager  = this.connectionPointManager;
-        this.placementManager.connectionCompatibility = this.connectionCompatibility;
 
         this.selectionManager = new SelectionManager(
             camera,
@@ -145,6 +157,11 @@ export class Editor {
         this.connectionCompatibility = new ConnectionCompatibility();
         this.mechanicalManager       = MechanicalConnectionManager.instance();
 
+        // Phase F: Verbindungssysteme an PlacementManager übergeben
+        // (muss NACH der Initialisierung der Manager erfolgen)
+        this.placementManager.connectionPointManager  = this.connectionPointManager;
+        this.placementManager.connectionCompatibility = this.connectionCompatibility;
+
         this.assemblyManager = new AssemblyManager(
             this.groupManager,
             this.library,
@@ -205,12 +222,115 @@ this.precisionManager = new PrecisionManager(this);
         this._placementHandlers = null;
 
         // ---------------------------------------------------------
+        // Phase G: Physik-Zustand (wird durch initPhysics() gesetzt)
+        // ---------------------------------------------------------
+
+        /** @type {import('../physics/PhysicsEngineAdapter.js').PhysicsEngineAdapter | null} */
+        this._physicsAdapter = null;
+
+        /** @type {import('../physics/PhysicsWorld.js').PhysicsWorld | null} */
+        this.physicsWorld = null;
+
+        /** @type {import('../physics/PhysicsBodyFactory.js').PhysicsBodyFactory | null} */
+        this._bodyFactory = null;
+
+        /** @type {import('../physics/PhysicsJointFactory.js').PhysicsJointFactory | null} */
+        this._jointFactory = null;
+
+        /** @type {import('../physics/PhysicsConstraintManager.js').PhysicsConstraintManager | null} */
+        this._constraintManager = null;
+
+        /** @type {import('../physics/CollisionFilterManager.js').CollisionFilterManager | null} */
+        this._collisionFilter = null;
+
+        /** @type {import('../physics/PhysicsContactManager.js').PhysicsContactManager | null} */
+        this._contactManager = null;
+
+        /** @type {import('../physics/PhysicsSyncSystem.js').PhysicsSyncSystem | null} */
+        this._syncSystem = null;
+
+        /** @type {import('../physics/PhysicsSimulationController.js').PhysicsSimulationController | null} */
+        this.physicsController = null;
+
+        /** @type {boolean} */
+        this._physicsInitialized = false;
+
+        // ---------------------------------------------------------
         // Callbacks und Events einrichten
         // ---------------------------------------------------------
 
         this._wireCallbacks();
         this.setupPlacementEvents();
     }
+
+
+    // -------------------------------------------------------------
+    // Phase G: Physik-Engine initialisieren
+    // -------------------------------------------------------------
+
+    /**
+     * Initialisiert die Physik-Engine (Rapier WASM).
+     * Darf erst nach dem Konstruktor aufgerufen werden.
+     *
+     * @returns {Promise<void>}
+     */
+    async initPhysics() {
+        // Initialisiert die Physik-Engine (Rapier WASM)
+        // Darf erst nach dem Konstruktor aufgerufen werden
+        if (this.physicsWorld) return; // already initialized
+
+        this._physicsAdapter = await PhysicsEngineAdapter.initialize();
+
+        const resolver  = new ColliderDefinitionResolver();
+        const matMgr    = new PhysicsMaterialManager();
+        const collFact  = new ColliderFactory({ adapter: this._physicsAdapter, resolver });
+
+        this.physicsWorld = new PhysicsWorld(this._physicsAdapter);
+
+        this._bodyFactory = new PhysicsBodyFactory({
+            adapter:         this._physicsAdapter,
+            colliderFactory: collFact,
+            materialManager: matMgr
+        });
+
+        this._jointFactory = new PhysicsJointFactory({
+            adapter:      this._physicsAdapter,
+            physicsWorld: this.physicsWorld
+        });
+
+        this._constraintManager = new PhysicsConstraintManager({
+            adapter:      this._physicsAdapter,
+            physicsWorld: this.physicsWorld,
+            jointFactory: this._jointFactory
+        });
+
+        this._collisionFilter  = new CollisionFilterManager();
+        this._contactManager   = new PhysicsContactManager({ physicsWorld: this.physicsWorld });
+
+        this._syncSystem = new PhysicsSyncSystem({
+            physicsWorld: this.physicsWorld,
+            adapter:      this._physicsAdapter,
+            library:      this.library
+        });
+
+        this.physicsController = new PhysicsSimulationController({
+            physicsWorld: this.physicsWorld,
+            syncSystem:   this._syncSystem
+        });
+
+        this._physicsInitialized = true;
+        console.log('[Editor] Physik-Engine initialisiert (Rapier', this._physicsAdapter.engineVersion, ')');
+    }
+
+    // -------------------------------------------------------------
+    // Phase G: Öffentliche Getter
+    // -------------------------------------------------------------
+
+    /** @returns {import('../physics/PhysicsEngineAdapter.js').PhysicsEngineAdapter | null} */
+    get physicsAdapter() { return this._physicsAdapter ?? null; }
+
+    /** @returns {boolean} */
+    get physicsInitialized() { return this._physicsInitialized === true; }
 
 
     // -------------------------------------------------------------
@@ -738,6 +858,15 @@ this.precisionManager = new PrecisionManager(this);
         // Phase F: Verbindungssysteme aufräumen
         this.mechanicalManager?.clear?.();
         this.connectionPointManager?.clear?.();
+
+        // Phase G: Physik-Engine aufräumen
+        if (this._physicsInitialized) {
+            this.physicsController?.pause?.();
+            this._constraintManager?.clear?.();
+            this._syncSystem?.clear?.();
+            this.physicsWorld?.clear?.();
+            this._physicsInitialized = false;
+        }
     }
 
     // -------------------------------------------------------------

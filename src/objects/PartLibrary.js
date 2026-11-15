@@ -131,6 +131,12 @@ export class PartLibrary {
             data.rotation
         );
 
+        if (data.scale && brick.group?.scale) {
+            brick.group.scale.set(data.scale.x ?? 1, data.scale.y ?? 1, data.scale.z ?? 1);
+            brick.group.updateMatrix?.();
+            brick.group.updateMatrixWorld?.(true);
+        }
+
         this.parts.push(brick);
 
         return brick;
@@ -240,6 +246,11 @@ export class PartLibrary {
 
         // Transform aus den gespeicherten Daten wiederherstellen
         instance.setTransform(data.position, data.rotation);
+        if (data.scale && instance.group?.scale) {
+            instance.group.scale.set(data.scale.x ?? 1, data.scale.y ?? 1, data.scale.z ?? 1);
+            instance.group.updateMatrix?.();
+            instance.group.updateMatrixWorld?.(true);
+        }
 
         this._instances.set(instance.id, instance);
 

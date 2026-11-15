@@ -324,7 +324,7 @@ export class AssemblyManager {
             return null;
         }
 
-        const joint = this.mechanicalManager.createConnection(jointDef);
+        const joint = this.mechanicalManager.addConnection(jointDef);
 
         assembly.addMechanicalConnection(joint.id);
 

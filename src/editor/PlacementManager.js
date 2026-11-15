@@ -625,14 +625,22 @@ export class PlacementManager {
             for (const point of pointDefs) {
                 // Weltposition des Verbindungspunkts
                 const worldPos = {
-                    x: brickWorldPos.x + (point.offset?.x ?? 0),
-                    y: brickWorldPos.y + (point.offset?.y ?? 0),
-                    z: brickWorldPos.z + (point.offset?.z ?? 0)
+                    x: brickWorldPos.x + (point.localPosition?.x ?? 0),
+                    y: brickWorldPos.y + (point.localPosition?.y ?? 0),
+                    z: brickWorldPos.z + (point.localPosition?.z ?? 0)
                 };
 
                 // Nahe Verbindungspunkte anderer Bauteile suchen
-                const nearby = this.connectionPointManager
-                    .findNearbyPoints(worldPos, point.type);
+                const SNAP_RADIUS = 0.6; // ~0.6 stud pitch for snapping
+                const nearby = this.connectionPointManager.findNearbyPoints(
+                    worldPos,
+                    SNAP_RADIUS,
+                    {
+                        type:          point.type,
+                        excludePartId: brick.id,
+                        catalog:       this.library
+                    }
+                );
 
                 if (!nearby || nearby.length === 0) continue;
 

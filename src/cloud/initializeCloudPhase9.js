@@ -26,6 +26,8 @@ import { CloudSyncManager }     from './CloudSyncManager.js';
 import { CloudStorage }         from './CloudStorage.js';
 import { SyncStatusManager, SyncStatus } from './SyncStatusManager.js';
 import { CloudErrorHandler }    from './CloudErrorHandler.js';
+import { CloudAPI }             from './CloudAPI.js';
+import { SessionManager }       from './SessionManager.js';
 import { LoginPanel }           from '../auth/LoginPanel.js';
 import { RegisterPanel }        from '../auth/RegisterPanel.js';
 import { AccountPanel }         from '../auth/AccountPanel.js';
@@ -95,11 +97,13 @@ export async function initializeCloudPhase9({
     // ------------------------------------------------------------------
     let authService, cloudService;
     let supabaseAvailable = false;
+    let supabaseClient = null;
 
     if (supabaseUrl && supabaseKey) {
         try {
             const { createClient } = await import('@supabase/supabase-js');
             const supabase = createClient(supabaseUrl, supabaseKey);
+            supabaseClient = supabase;
 
             const { SupabaseAuthService }  = await import('../auth/SupabaseAuthService.js');
             const { SupabaseCloudService } = await import('./SupabaseCloudService.js');
@@ -134,6 +138,17 @@ export async function initializeCloudPhase9({
         syncStatusManager,
         authManager,
         cloudErrorHandler,
+    });
+
+    const cloudAPI            = new CloudAPI({
+        cloudProjectManager,
+        cloudSyncManager,
+        authManager,
+    });
+
+    const sessionManager      = new SessionManager({
+        authManager,
+        cloudSyncManager,
     });
 
     // ------------------------------------------------------------------
@@ -240,6 +255,8 @@ export async function initializeCloudPhase9({
     window.cloudProjectManager = cloudProjectManager;
     window.cloudSyncManager    = cloudSyncManager;
     window.syncStatusManager   = syncStatusManager;
+    window.cloudAPI            = cloudAPI;
+    window.sessionManager      = sessionManager;
     window.cloudPanel          = cloudPanel;
     window.accountMenu         = accountMenu;
 
@@ -249,11 +266,14 @@ export async function initializeCloudPhase9({
         cloudSyncManager,
         syncStatusManager,
         cloudErrorHandler,
+        cloudAPI,
+        sessionManager,
         loginPanel,
         registerPanel,
         accountPanel,
         cloudPanel,
         accountMenu,
         supabaseAvailable,
+        supabaseClient,   // null when Supabase is not configured
     };
 }

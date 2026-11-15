@@ -4,13 +4,15 @@ export class ModelSnapshot {
         library,
         connectionManager,
         groupManager = null,
-        componentLibrary = null
+        componentLibrary = null,
+        mechanicalManager = null
     ) {
         return {
             bricks: library.getAllData(),
             connections: connectionManager.toData(),
             groups: groupManager ? groupManager.toData() : [],
-            components: componentLibrary ? componentLibrary.toData() : []
+            components: componentLibrary ? componentLibrary.toData() : [],
+            mechanicalConnections: mechanicalManager?.toData()?.mechanicalConnections ?? []
         };
     }
 
@@ -23,7 +25,8 @@ export class ModelSnapshot {
         library,
         connectionManager,
         groupManager = null,
-        componentLibrary = null
+        componentLibrary = null,
+        mechanicalManager = null
     ) {
         const data = ModelSnapshot.clone(snapshot);
 
@@ -31,6 +34,14 @@ export class ModelSnapshot {
         connectionManager.clear();
         groupManager?.clear();
         componentLibrary?.clear();
+
+        if (mechanicalManager) {
+            mechanicalManager.clear();
+            if (snapshot.mechanicalConnections?.length) {
+                const ids = new Set(snapshot.bricks?.map(b => b.id) ?? []);
+                mechanicalManager.loadFromData(snapshot.mechanicalConnections, ids);
+            }
+        }
 
         for (const brickData of data.bricks) {
             library.addBrickFromData(brickData);

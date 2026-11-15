@@ -54,9 +54,10 @@ export class AuthService {
      * Neuen Benutzer registrieren.
      * @param {string} email
      * @param {string} password
+     * @param {{ displayName?: string }} [options]
      * @returns {Promise<{ id: string, email: string }>} – Benutzerobjekt
      */
-    async register(email, password) {
+    async register(email, password, options = {}) {
         throw new Error('AuthService.register ist nicht implementiert.');
     }
 
@@ -103,6 +104,19 @@ export class AuthService {
     onAuthStateChange(callback) {
         throw new Error('AuthService.onAuthStateChange ist nicht implementiert.');
     }
+
+    /**
+     * Eigenes Konto löschen.
+     * Konkrete Implementierungen können diese Methode überschreiben.
+     * Standardimplementierung wirft, um anzuzeigen, dass serverseitige Hilfe benötigt wird.
+     * @returns {Promise<void>}
+     */
+    async deleteAccount() {
+        throw new Error(
+            'Kontolöschung ist nicht implementiert. ' +
+            'Eine serverseitige Implementierung (z. B. Supabase Edge Function) ist erforderlich.'
+        );
+    }
 }
 
 
@@ -123,5 +137,6 @@ export class NullAuthService extends AuthService {
     async logout()            { /* Kein Fehler – Abmelden bei nicht-konfiguriertem Dienst ist OK */ }
     async getSession()        { return null; }
     async resetPassword()     { throw new AuthError(NullAuthService.MSG, AuthErrorCodes.UNKNOWN); }
+    async deleteAccount()     { throw new AuthError(NullAuthService.MSG, AuthErrorCodes.UNKNOWN); }
     onAuthStateChange()       { return () => {}; }
 }

@@ -23,7 +23,7 @@ export class RegisterPanel {
     hide() { this.container.style.display = 'none'; }
 
     reset() {
-        [this._emailInput, this._passwordInput, this._confirmInput]
+        [this._displayNameInput, this._emailInput, this._passwordInput, this._confirmInput]
             .forEach(i => { if (i) i.value = ''; });
         this._showError('');
         this._showSuccess('');
@@ -38,9 +38,10 @@ export class RegisterPanel {
         title.textContent = 'Konto erstellen';
         this.container.appendChild(title);
 
-        this._emailInput   = this._createInput('email',    'E-Mail-Adresse',  'email');
-        this._passwordInput= this._createInput('password', 'Passwort',        'new-password');
-        this._confirmInput = this._createInput('password', 'Passwort bestätigen', 'new-password');
+        this._displayNameInput = this._createInput('text',     'Anzeigename (optional)', 'name');
+        this._emailInput       = this._createInput('email',    'E-Mail-Adresse',          'email');
+        this._passwordInput    = this._createInput('password', 'Passwort',                'new-password');
+        this._confirmInput     = this._createInput('password', 'Passwort bestätigen',     'new-password');
 
         this._errorEl = document.createElement('p');
         this._errorEl.className = 'register-panel__error';
@@ -77,18 +78,19 @@ export class RegisterPanel {
     }
 
     async _handleSubmit() {
-        const email    = this._emailInput?.value?.trim() ?? '';
-        const password = this._passwordInput?.value ?? '';
-        const confirm  = this._confirmInput?.value  ?? '';
+        const displayName = this._displayNameInput?.value?.trim() ?? '';
+        const email       = this._emailInput?.value?.trim() ?? '';
+        const password    = this._passwordInput?.value ?? '';
+        const confirm     = this._confirmInput?.value  ?? '';
 
-        if (!email || !password) { this._showError('Bitte alle Felder ausfüllen.'); return; }
+        if (!email || !password) { this._showError('Bitte E-Mail und Passwort ausfüllen.'); return; }
         if (password !== confirm) { this._showError('Die Passwörter stimmen nicht überein.'); return; }
         if (password.length < 6)  { this._showError('Das Passwort muss mindestens 6 Zeichen lang sein.'); return; }
 
         this._showError(''); this._showSuccess('');
 
         try {
-            await this._auth.register(email, password);
+            await this._auth.register(email, password, { displayName: displayName || undefined });
             this._showSuccess('Konto erstellt. Bitte bestätige deine E-Mail-Adresse.');
             this.reset();
             this._onSuccess();

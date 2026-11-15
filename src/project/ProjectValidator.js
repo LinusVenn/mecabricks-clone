@@ -554,6 +554,39 @@ export class ProjectValidator {
             }
         }
 
+        // ── 8. Physik-Daten validieren (Phase G, optional) ──
+
+        if (data.physics !== undefined) {
+            if (typeof data.physics !== 'object' || Array.isArray(data.physics) || data.physics === null) {
+                throw new Error('physics muss ein Objekt sein');
+            }
+            // gravity
+            if (data.physics.gravity !== undefined) {
+                const g = data.physics.gravity;
+                if (typeof g !== 'object' || typeof g.x !== 'number' || typeof g.y !== 'number' || typeof g.z !== 'number') {
+                    throw new Error('physics.gravity muss { x, y, z } mit Zahlen sein');
+                }
+            }
+            // enabled
+            if (data.physics.enabled !== undefined && typeof data.physics.enabled !== 'boolean') {
+                throw new Error('physics.enabled muss ein boolean sein');
+            }
+            // bodies
+            if (data.physics.bodies !== undefined) {
+                if (typeof data.physics.bodies !== 'object' || Array.isArray(data.physics.bodies)) {
+                    throw new Error('physics.bodies muss ein Objekt sein');
+                }
+                for (const [instanceId, bodyConfig] of Object.entries(data.physics.bodies)) {
+                    if (typeof bodyConfig !== 'object' || bodyConfig === null) {
+                        throw new Error(`physics.bodies[${instanceId}]: muss ein Objekt sein`);
+                    }
+                    if (bodyConfig.type !== undefined && !['dynamic', 'fixed', 'kinematicPosition', 'kinematicVelocity'].includes(bodyConfig.type)) {
+                        throw new Error(`physics.bodies[${instanceId}].type: ungültiger Wert '${bodyConfig.type}'`);
+                    }
+                }
+            }
+        }
+
         // Alle Prüfungen erfolgreich abgeschlossen.
         return true;
     }

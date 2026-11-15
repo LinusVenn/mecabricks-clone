@@ -40,7 +40,18 @@ export class ProjectSerializer {
             connections: connectionManager.toData(),
             groups: groupManager ? groupManager.toData() : [],
             components: componentLibrary ? componentLibrary.toData() : [],
-            mechanicalConnections: []
+            mechanicalConnections: [],
+
+            // Phase G: Physik-Daten (optional, wird nur gespeichert wenn aktiv)
+            physics: {
+                gravity: { x: 0, y: -9.81, z: 0 },
+                enabled: false,
+                bodies: {},           // Map of instanceId → PhysicsBodyConfig
+                settings: {
+                    timeStep: 0.016667,   // 1/60
+                    solverIterations: 8
+                }
+            }
         };
     }
 
@@ -58,7 +69,8 @@ export class ProjectSerializer {
         projectInfo = {},
         groupManager = null,
         componentLibrary = null,
-        mechanicalManager = null
+        mechanicalManager = null,
+        physicsManager = null
     ) {
         const projectData = this.createProject(
             library,
@@ -71,6 +83,11 @@ export class ProjectSerializer {
         if (mechanicalManager) {
             projectData.mechanicalConnections =
                 mechanicalManager?.toData()?.mechanicalConnections ?? [];
+        }
+
+        // Phase G: Physik-Daten serialisieren
+        if (physicsManager) {
+            projectData.physics = physicsManager.toData();
         }
 
         return this.toJSON(projectData);
@@ -168,7 +185,8 @@ export class ProjectSerializer {
         connectionManager,
         groupManager = null,
         componentLibrary = null,
-        mechanicalManager = null
+        mechanicalManager = null,
+        physicsManager = null
     ) {
         // Zuerst die eingehenden Daten vollständig validieren.
         this.validate(data);
@@ -231,6 +249,11 @@ export class ProjectSerializer {
                 'Der vorherige Projektzustand wurde wiederhergestellt. ' +
                 `Ursache: ${loadError.message}`
             );
+        }
+
+        // Phase G: Physik-Daten laden (optional)
+        if (data.physics !== undefined) {
+            physicsManager?.loadFromData?.(data.physics);
         }
 
         return data.project;
